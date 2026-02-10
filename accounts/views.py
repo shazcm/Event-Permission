@@ -13,12 +13,14 @@ def login_view(request):
             login(request, user)
 
             # Role based redirect
-            if user.role == 'faculty':
-                return redirect('faculty_dashboard')
+            if user.is_superuser or user.is_staff and user.role == 'admin':
+                return redirect('/admin/')
+
             elif user.role == 'principal':
                 return redirect('principal_dashboard')
-            elif user.role == 'admin':
-                return redirect('/admin')
+
+            elif user.role == 'faculty':
+                return redirect('faculty_dashboard')
         else:
             messages.error(request, "Invalid username or password")
 
