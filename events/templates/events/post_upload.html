@@ -1,0 +1,8 @@
+<h2>Post Event Upload — {{ event.title }}</h2>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit">Submit Post-Event Details</button>
+</form>

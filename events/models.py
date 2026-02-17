@@ -57,6 +57,23 @@ class Event(models.Model):
     principal_remark = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    report_text = models.TextField(blank=True, null=True)
+
+    attendance_file = models.FileField(
+        upload_to='attendance/',
+        blank=True,
+        null=True
+    )
+
+    photo = models.ImageField(
+        upload_to='event_photos/',
+        blank=True,
+        null=True
+    )
+
+    completed_at = models.DateTimeField(blank=True, null=True)
+
 
     def __str__(self):
         return self.title

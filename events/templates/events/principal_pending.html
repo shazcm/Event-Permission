@@ -1,0 +1,29 @@
+<h2>Pending Event Proposals</h2>
+
+{% for e in events %}
+    <hr>
+    <b>{{ e.title }}</b><br>
+    Category: {{ e.category }}<br>
+    Department: {{ e.department }}<br>
+    Date: {{ e.event_date }}<br>
+    Budget: {{ e.budget }}<br>
+
+    <!-- Approve -->
+    <form method="post"
+          action="/events/principal/action/{{ e.id }}/approve/">
+        {% csrf_token %}
+        <button type="submit">Approve</button>
+    </form>
+
+    <!-- Reject -->
+    <form method="post"
+          action="/events/principal/action/{{ e.id }}/reject/">
+        {% csrf_token %}
+        Remark:
+        <input type="text" name="remark" required>
+        <button type="submit">Reject</button>
+    </form>
+
+{% empty %}
+    <p>No pending events.</p>
+{% endfor %}

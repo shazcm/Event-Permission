@@ -1,2 +1,8 @@
 <h2>Principal Dashboard</h2>
 <p>Welcome {{ request.user.username }}</p>
+<a href="/events/principal/pending/">
+    <button>View Pending Events</button>
+</a>
+<a href="/events/principal/verify/">
+    <button>Verify Completed Events</button>
+</a>

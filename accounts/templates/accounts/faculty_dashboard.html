@@ -3,3 +3,15 @@
 <a href="/events/create/">
     <button>Create Event</button>
 </a>
+<h3>Your Events</h3>
+
+{% for e in request.user.event_set.all %}
+    {{ e.title }} — {{ e.status }}
+
+    {% if e.status == 'approved' %}
+        <a href="/events/post-upload/{{ e.id }}/">
+            Upload Post-Event
+        </a>
+    {% endif %}
+    <br>
+{% endfor %}

@@ -1,0 +1,22 @@
+<h2>Completed Events — Pending Verification</h2>
+
+{% for e in events %}
+    <hr>
+    <b>{{ e.title }}</b><br>
+    Report: {{ e.report_text }}<br>
+
+    {% if e.attendance_file %}
+        <a href="{{ e.attendance_file.url }}">Attendance File</a><br>
+    {% endif %}
+
+    {% if e.photo %}
+        <img src="{{ e.photo.url }}" width="200"><br>
+    {% endif %}
+
+    <a href="/events/principal/verify/{{ e.id }}/">
+        Verify Event
+    </a>
+
+{% empty %}
+    No events to verify.
+{% endfor %}
