@@ -1,0 +1,26 @@
+<h2>Search & Filter Events</h2>
+
+<form method="get">
+    Category:
+    <input type="text" name="category">
+
+    Department:
+    <input type="text" name="department">
+
+    Status:
+    <input type="text" name="status">
+
+    <button type="submit">Search</button>
+</form>
+
+<hr>
+
+{% for e in events %}
+    <b>{{ e.title }}</b> —
+    {{ e.category }} —
+    {{ e.department }} —
+    {{ e.status }}
+    <br>
+{% empty %}
+    No events found.
+{% endfor %}

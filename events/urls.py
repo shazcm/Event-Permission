@@ -23,6 +23,14 @@ urlpatterns = [
     path('principal/verify/<int:event_id>/',
         views.principal_verify_event,
         name='principal_verify_event'),
+    
+    path('principal/analytics/',
+        views.analytics_dashboard,
+        name='analytics_dashboard'),
+
+    path('principal/filter/',
+        views.filter_events,
+        name='filter_events'),
 
 
 ]

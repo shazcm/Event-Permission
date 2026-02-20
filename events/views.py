@@ -4,6 +4,7 @@ from .forms import EventForm
 from .models import Event
 from django.utils import timezone
 from .forms import PostEventForm
+from django.db.models import Count
 
 @login_required
 def create_event(request):
@@ -109,3 +110,50 @@ def principal_verify_event(request, event_id):
 
     return redirect('principal_verify_list')
 
+
+@login_required
+def analytics_dashboard(request):
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    total_events = Event.objects.count()
+    pending = Event.objects.filter(status='pending').count()
+    approved = Event.objects.filter(status='approved').count()
+    completed = Event.objects.filter(status='completed').count()
+    verified = Event.objects.filter(status='verified').count()
+
+    context = {
+        'total': total_events,
+        'pending': pending,
+        'approved': approved,
+        'completed': completed,
+        'verified': verified,
+    }
+
+    return render(request, 'events/analytics.html', context)
+
+@login_required
+def filter_events(request):
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    events = Event.objects.all()
+
+    category = request.GET.get('category')
+    department = request.GET.get('department')
+    status = request.GET.get('status')
+
+    if category:
+        events = events.filter(category=category)
+
+    if department:
+        events = events.filter(department=department)
+
+    if status:
+        events = events.filter(status=status)
+
+    return render(request,
+                  'events/filter_events.html',
+                  {'events': events})
