@@ -1,6 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
+from events.models import Event
+from django.db.models import Count
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
 def login_view(request):
     if request.method == "POST":
@@ -35,7 +39,27 @@ def faculty_dashboard(request):
 
 @login_required
 def principal_dashboard(request):
-    return render(request, 'accounts/principal_dashboard.html')
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    total_events = Event.objects.count()
+    pending_count = Event.objects.filter(status='pending').count()
+    verified_count = Event.objects.filter(status='verified').count()
+    completed_count = Event.objects.filter(status='completed').count()
+
+    # Recent 5 events
+    recent_events = Event.objects.order_by('-created_at')[:5]
+
+    context = {
+        'total_events': total_events,
+        'pending_count': pending_count,
+        'verified_count': verified_count,
+        'completed_count': completed_count,
+        'recent_events': recent_events,
+    }
+
+    return render(request, 'accounts/principal_dashboard.html', context)
 
 def home(request):
     return render(request, 'accounts/home.html')

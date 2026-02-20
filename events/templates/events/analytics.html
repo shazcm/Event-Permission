@@ -1,7 +1,109 @@
-<h2>Analytics Dashboard</h2>
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics Dashboard</title>
 
-<p>Total Events: {{ total }}</p>
-<p>Pending: {{ pending }}</p>
-<p>Approved: {{ approved }}</p>
-<p>Completed: {{ completed }}</p>
-<p>Verified: {{ verified }}</p>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+    <link rel="stylesheet"
+          href="{% static 'events/css/analytics.css' %}">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="page-header">
+        <div class="header-left">
+            <h2>Analytics Dashboard</h2>
+            <p>Real-time insights</p>
+        </div>
+        <a href="{% url 'principal_dashboard' %}" class="back-btn">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ total }}</div>
+            <div class="stat-label">Total Events</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-value">{{ pending }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-value">{{ approved }}</div>
+            <div class="stat-label">Approved</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-value">{{ completed }}</div>
+            <div class="stat-label">Completed</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-value">{{ verified }}</div>
+            <div class="stat-label">Verified</div>
+        </div>
+    </div>
+
+    <!-- Monthly Chart -->
+    <div class="charts-section">
+        <div class="chart-card">
+            <h3>Monthly Trends</h3>
+            <div class="bar-chart">
+                {% for item in monthly_data %}
+                <div class="bar-item">
+                    
+                    <small>{{ item.month|date:"M" }}</small>
+                </div>
+                {% empty %}
+                <p>No data</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Table -->
+    <div class="table-section">
+        <h3>Department Performance</h3>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Department</th>
+                <th>Total</th>
+                <th>Pending</th>
+                <th>Completed</th>
+                <th>Verified</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {% for dept in department_data %}
+            <tr>
+                <td>{{ dept.department }}</td>
+                <td>{{ dept.total }}</td>
+                <td>{{ dept.pending }}</td>
+                <td>{{ dept.completed }}</td>
+                <td>{{ dept.verified }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">No data available</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+</body>
+</html>

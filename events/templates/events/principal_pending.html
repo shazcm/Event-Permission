@@ -1,29 +1,462 @@
-<h2>Pending Event Proposals</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Event Proposals</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-{% for e in events %}
-    <hr>
-    <b>{{ e.title }}</b><br>
-    Category: {{ e.category }}<br>
-    Department: {{ e.department }}<br>
-    Date: {{ e.event_date }}<br>
-    Budget: {{ e.budget }}<br>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667a8a 0%, #1e2b3a 100%);
+            min-height: 100vh;
+            padding: 24px;
+        }
 
-    <!-- Approve -->
-    <form method="post"
-          action="/events/principal/action/{{ e.id }}/approve/">
-        {% csrf_token %}
-        <button type="submit">Approve</button>
-    </form>
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
 
-    <!-- Reject -->
-    <form method="post"
-          action="/events/principal/action/{{ e.id }}/reject/">
-        {% csrf_token %}
-        Remark:
-        <input type="text" name="remark" required>
-        <button type="submit">Reject</button>
-    </form>
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
 
-{% empty %}
-    <p>No pending events.</p>
-{% endfor %}
+        .page-header h2 {
+            font-weight: 500;
+            font-size: 28px;
+            color: white;
+            letter-spacing: -0.3px;
+        }
+
+        .back-btn {
+            padding: 10px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 40px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stats Summary */
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            color: white;
+        }
+
+        .stat-box .label {
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .stat-box .value {
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        /* Filters */
+        .filters-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-select {
+            padding: 10px 16px;
+            border: 1px solid #eef2f6;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color: #1e2b3a;
+            background: #f8fafc;
+            min-width: 160px;
+        }
+
+        .search-box {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid #eef2f6;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            background: #f8fafc;
+        }
+
+        /* Events Grid */
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 24px;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .event-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 25px 40px -10px rgba(0, 0, 0, 0.3);
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .event-header h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e2b3a;
+            margin: 0;
+        }
+
+        .priority-badge {
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .event-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #6b7a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .detail-value {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1e2b3a;
+        }
+
+        .detail-value.category {
+            background: #eef2f6;
+            padding: 4px 12px;
+            border-radius: 40px;
+            display: inline-block;
+            font-size: 13px;
+            width: fit-content;
+        }
+
+        .budget-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e2b3a;
+        }
+
+        .budget-value small {
+            font-size: 12px;
+            font-weight: 400;
+            color: #6b7a8a;
+            margin-left: 4px;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .approve-form, .reject-form {
+            flex: 1;
+        }
+
+        .btn-approve {
+            width: 100%;
+            padding: 12px;
+            background: #1e2b3a;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-approve:hover {
+            background: #0f1e2c;
+        }
+
+        .reject-form {
+            position: relative;
+        }
+
+        .reject-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .reject-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #eef2f6;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .btn-reject {
+            padding: 12px 20px;
+            background: #fee2e2;
+            color: #991b1b;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-reject:hover {
+            background: #fecaca;
+        }
+
+        /* Empty State */
+        .empty-state {
+            background: white;
+            border-radius: 24px;
+            padding: 60px 40px;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 18px;
+            color: #6b7a8a;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            padding: 12px 32px;
+            background: #1e2b3a;
+            color: white;
+            text-decoration: none;
+            border-radius: 40px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #0f1e2c;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .events-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .event-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .reject-input-group {
+                flex-direction: column;
+            }
+            
+            .filters-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with back navigation -->
+        <div class="page-header">
+            <h2>Pending Event Proposals</h2>
+            <a href="{% url 'principal_dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        </div>
+
+        <!-- Quick Stats -->
+        <!-- Quick Stats -->
+<div class="stats-summary">
+    <div class="stat-box">
+        <div class="label">Total Pending</div>
+        <div class="value">{{ total_pending }}</div>
+    </div>
+
+    <div class="stat-box">
+        <div class="label">Total Budget</div>
+        <div class="value">
+            ₹{{ total_budget|floatformat:0 }}
+        </div>
+    </div>
+
+    <div class="stat-box">
+        <div class="label">Departments</div>
+        <div class="value">
+            {{ total_departments }}
+        </div>
+    </div>
+</div>
+
+     <!-- Filters Bar -->
+<form method="get" class="filters-bar">
+
+    <select name="category" class="filter-select">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+            <option value="{{ cat }}"
+                {% if cat == selected_category %}selected{% endif %}>
+                {{ cat }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <select name="department" class="filter-select">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+            <option value="{{ dept }}"
+                {% if dept == selected_department %}selected{% endif %}>
+                {{ dept }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <input type="text"
+           name="search"
+           value="{{ search_query }}"
+           class="search-box"
+           placeholder="Search events...">
+
+</form>
+        <!-- Events Grid -->
+        <div class="events-grid">
+            {% for e in events %}
+            <div class="event-card">
+                <div class="event-header">
+                    <h3>{{ e.title }}</h3>
+                    <span class="priority-badge">Pending Review</span>
+                </div>
+
+                <div class="event-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Category</span>
+                        <span class="detail-value category">{{ e.category }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Department</span>
+                        <span class="detail-value">{{ e.department }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Event Date</span>
+                        <span class="detail-value">{{ e.event_date|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Budget</span>
+                        <span class="budget-value">₹{{ e.budget }} <small>INR</small></span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <!-- Approve Form -->
+                    <form method="post" action="/events/principal/action/{{ e.id }}/approve/" class="approve-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-approve">✓ Approve</button>
+                    </form>
+
+                    <!-- Reject Form -->
+                    <form method="post" action="/events/principal/action/{{ e.id }}/reject/" class="reject-form">
+                        {% csrf_token %}
+                        <div class="reject-input-group">
+                            <input type="text" name="remark" class="reject-input" placeholder="Reason for rejection..." required>
+                            <button type="submit" class="btn-reject">✗ Reject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>No pending event proposals</p>
+                <a href="/events/principal/filter/" class="btn-primary">View All Events</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

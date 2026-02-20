@@ -1,17 +1,316 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>College Event System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667a8a 0%, #1e2b3a 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        /* Navigation */
+        .navbar {
+            padding: 20px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: white;
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 400;
+        }
+
+        .nav-login-btn {
+            padding: 10px 28px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 40px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-login-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Hero Section - Simplified */
+        .hero {
+            padding: 100px 0 80px;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .hero-content h1 {
+            font-size: 44px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .highlight {
+            color: #ffd700;
+            position: relative;
+            display: inline-block;
+        }
+
+        .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 4px;
+            z-index: -1;
+        }
+
+        .hero-description {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            padding: 14px 40px;
+            background: white;
+            color: #1e2b3a;
+            text-decoration: none;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.3);
+            background: #f0f4f8;
+        }
+
+        /* App Preview Card - Simplified */
+        .preview-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 40px;
+            margin: 40px 0 60px;
+        }
+
+        .preview-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: white;
+            margin-bottom: 24px;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .tag {
+            padding: 10px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Info Section - Minimal */
+        .info-section {
+            padding: 40px 0 60px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 28px;
+        }
+
+        .info-item h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: white;
+        }
+
+        .info-item p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Footer - Minimal */
+        .footer {
+            padding: 40px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .footer-text {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 20px;
+            }
+
+            .hero-content h1 {
+                font-size: 36px;
+            }
+
+            .hero-description {
+                font-size: 16px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn-primary {
+                width: 100%;
+                text-align: center;
+                justify-content: center;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .preview-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>College Event Approval, Verification & Analytics System</h1>
+    <!-- Simple Navigation -->
+    <nav class="navbar">
+        <a href="/" class="logo">🎓 <span>College Event System</span></a>
+        <a href="{% url 'login' %}" class="nav-login-btn">Sign In</a>
+    </nav>
 
-    <p>
-        A web-based system to manage college events, approvals, and reporting.
-    </p>
+    <!-- Hero Section - Clean and Simple -->
+    <section class="hero container">
+        <div class="hero-content">
+            <h1>
+                <span class="highlight">College</span> Event Management
+            </h1>
+            <p class="hero-description">
+                Internal system for event approval, verification, and tracking.
+                Access restricted to authorized personnel only.
+            </p>
+            
+            <div class="hero-buttons">
+                <a href="{% url 'login' %}" class="btn-primary">
+                    Login to Dashboard →
+                </a>
+            </div>
+        </div>
+    </section>
 
-    <a href="{% url 'login' %}">
-        <button>Login</button>
-    </a>
+    <!-- Simple Feature Preview -->
+    <div class="container">
+        <div class="preview-card">
+            <div class="preview-title">System Modules</div>
+            <div class="feature-tags">
+                <span class="tag">Event Approval</span>
+                <span class="tag">Verification</span>
+                <span class="tag">Analytics</span>
+                <span class="tag">Reports</span>
+                <span class="tag">Faculty Dashboard</span>
+                <span class="tag">Principal Dashboard</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimal Info Section -->
+    <section class="info-section container">
+        <div class="info-grid">
+            <div class="info-item">
+                <h3>For Principals</h3>
+                <p>Review and approve event proposals, verify completed events, access analytics and reports.</p>
+            </div>
+            <div class="info-item">
+                <h3>For Faculty</h3>
+                <p>Submit event proposals, upload completion reports, track approval status.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Simple Footer -->
+    <footer class="footer container">
+        <div class="footer-text">
+            College Event Management System · Internal Use Only · © 2026
+        </div>
+    </footer>
 </body>
 </html>
