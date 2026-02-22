@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import EventForm
-from .models import Event
+from .models import Event, Department
 from django.utils import timezone
 from .forms import PostEventForm
 from django.db.models import Count
@@ -10,7 +10,7 @@ from django.db.models import Count
 def create_event(request):
 
     if request.method == "POST":
-        form = EventForm(request.POST)
+        form = EventForm(request.POST, user=request.user)
         if form.is_valid():
             event = form.save(commit=False)
             event.created_by = request.user
@@ -22,7 +22,7 @@ def create_event(request):
             return redirect('faculty_dashboard')
 
     else:
-        form = EventForm()
+        form = EventForm(user=request.user)
 
     return render(request, 'events/create_event.html', {'form': form})
 
@@ -133,6 +133,7 @@ def analytics_dashboard(request):
 
     return render(request, 'events/analytics.html', context)
 
+
 @login_required
 def filter_events(request):
 
@@ -149,11 +150,18 @@ def filter_events(request):
         events = events.filter(category=category)
 
     if department:
-        events = events.filter(department=department)
+        events = events.filter(department_id=department)
 
     if status:
         events = events.filter(status=status)
 
+    departments = Department.objects.all()
+
+    context = {
+        'events': events,
+        'departments': departments,
+    }
+
     return render(request,
                   'events/filter_events.html',
-                  {'events': events})
+                  context)

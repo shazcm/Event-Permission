@@ -2,6 +2,12 @@ from django.db import models
 from django.conf import settings
 
 
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+    
 class Event(models.Model):
 
     CATEGORY_CHOICES = (
@@ -34,7 +40,12 @@ class Event(models.Model):
         on_delete=models.CASCADE
     )
 
-    department = models.CharField(max_length=100, blank=True, null=True)
+    department = models.ForeignKey(
+    Department,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True
+    )
 
     participation_type = models.CharField(
         max_length=20,

@@ -1,14 +1,35 @@
 <h2>Search & Filter Events</h2>
 
 <form method="get">
+
     Category:
-    <input type="text" name="category">
+    <select name="category">
+        <option value="">All</option>
+        <option value="department">Department</option>
+        <option value="nss">NSS</option>
+        <option value="ncc">NCC</option>
+        <option value="union">Union</option>
+        <option value="other">Other</option>
+    </select>
 
     Department:
-    <input type="text" name="department">
+    <select name="department">
+        <option value="">All</option>
+        {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }}</option>
+        {% endfor %}
+    </select>
+
 
     Status:
-    <input type="text" name="status">
+    <select name="status">
+        <option value="">All</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="completed">Completed</option>
+        <option value="verified">Verified</option>
+        <option value="rejected">Rejected</option>
+    </select>
 
     <button type="submit">Search</button>
 </form>

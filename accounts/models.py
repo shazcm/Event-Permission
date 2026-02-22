@@ -24,10 +24,11 @@ class User(AbstractUser):
         blank=True,
         null=True
     )
-    department = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
+    department = models.ForeignKey(
+    'events.Department',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True
     )
 
     def __str__(self):
