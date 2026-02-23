@@ -32,5 +32,9 @@ urlpatterns = [
         views.filter_events,
         name='filter_events'),
 
+    path('faculty/filter/',
+        views.faculty_filter_events,
+        name='faculty_filter_events'),
+
 
 ]

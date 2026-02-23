@@ -3,15 +3,24 @@
 <a href="/events/create/">
     <button>Create Event</button>
 </a>
+<a href="/events/faculty/filter/">
+    <button>{{ button_label }}</button>
+</a>
 <h3>Your Events</h3>
 
-{% for e in request.user.event_set.all %}
-    {{ e.title }} — {{ e.status }}
+{% for e in my_events %}
+    <b>{{ e.title }}</b> —
+    {{ e.status }} —
+    {{ e.participation_type }} —
+    {{ e.event_date }}
 
     {% if e.status == 'approved' %}
         <a href="/events/post-upload/{{ e.id }}/">
-            Upload Post-Event
+            <button>Upload Post-Event</button>
         </a>
     {% endif %}
-    <br>
+
+    <br><br>
+{% empty %}
+    You have not created any events.
 {% endfor %}

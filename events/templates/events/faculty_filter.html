@@ -1,4 +1,4 @@
-<h2>Search & Filter Events</h2>
+<h2>{{ page_title }}</h2>
 
 <form method="get">
 
@@ -16,26 +16,6 @@
         <option value="rejected">Rejected</option>
     </select>
 
-    Category:
-    <select name="category">
-        <option value="">All</option>
-        <option value="department">Department</option>
-        <option value="nss">NSS</option>
-        <option value="ncc">NCC</option>
-        <option value="union">Union</option>
-        <option value="other">Other</option>
-    </select>
-
-    Department:
-    <select name="department">
-        <option value="">All</option>
-        {% for dept in departments %}
-            <option value="{{ dept.id }}">
-                {{ dept.name }}
-            </option>
-        {% endfor %}
-    </select>
-
     Participation:
     <select name="participation">
         <option value="">All</option>
@@ -43,12 +23,11 @@
         <option value="girls">Girls</option>
         <option value="mixed">Mixed</option>
     </select>
-
-    Start Date:
+    📅 Start Date:
     <input type="date" name="start_date"
        value="{{ request.GET.start_date }}">
 
-    End Date:
+    📅 End Date:
     <input type="date" name="end_date"
        value="{{ request.GET.end_date }}">
 
@@ -60,10 +39,8 @@
 
 {% for e in events %}
     <b>{{ e.title }}</b> —
-    {{ e.department }} —
-    {{ e.category }} —
-    {{ e.participation_type }} —
     {{ e.status }} —
+    {{ e.participation_type }} —
     {{ e.event_date }}
     <br>
 {% empty %}

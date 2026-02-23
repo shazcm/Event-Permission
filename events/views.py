@@ -5,6 +5,7 @@ from .models import Event, Department
 from django.utils import timezone
 from .forms import PostEventForm
 from django.db.models import Count
+from django.db.models import Q
 
 @login_required
 def create_event(request):
@@ -142,18 +143,40 @@ def filter_events(request):
 
     events = Event.objects.all()
 
-    category = request.GET.get('category')
-    department = request.GET.get('department')
+    # 🔎 Search by title
+    search = request.GET.get('search')
+    if search:
+        events = events.filter(title__icontains=search)
+
+    # 📌 Status filter
     status = request.GET.get('status')
+    if status:
+        events = events.filter(status=status)
 
-    if category:
-        events = events.filter(category=category)
-
+    # 🏢 Department filter
+    department = request.GET.get('department')
     if department:
         events = events.filter(department_id=department)
 
-    if status:
-        events = events.filter(status=status)
+    # 📂 Category filter
+    category = request.GET.get('category')
+    if category:
+        events = events.filter(category=category)
+
+    # 👦👧 Participation filter
+    participation = request.GET.get('participation')
+    if participation:
+        events = events.filter(participation_type=participation)
+
+    # 📅 Date range filter
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    if start_date:
+        events = events.filter(event_date__gte=start_date)
+
+    if end_date:
+        events = events.filter(event_date__lte=end_date)
 
     departments = Department.objects.all()
 
@@ -164,4 +187,73 @@ def filter_events(request):
 
     return render(request,
                   'events/filter_events.html',
+                  context)
+
+
+
+@login_required
+def faculty_filter_events(request):
+
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    user = request.user
+
+    # Base queryset
+    if user.sub_role == 'hod':
+        events = Event.objects.filter(department=user.department)
+        page_title = f"{user.department} Department Events"
+
+    elif user.sub_role == 'nss':
+        events = Event.objects.filter(category='nss')
+        page_title = "NSS Events"
+
+    elif user.sub_role == 'ncc':
+        events = Event.objects.filter(category='ncc')
+        page_title = "NCC Events"
+
+    elif user.sub_role == 'union':
+        events = Event.objects.filter(category='union')
+        page_title = "Union Events"
+
+    elif user.sub_role == 'other':
+        events = Event.objects.filter(category='other')
+        page_title = "Other Events"
+
+    else:
+        events = Event.objects.none()
+        page_title = "Events"
+
+    # 🔎 Search
+    search = request.GET.get('search')
+    if search:
+        events = events.filter(title__icontains=search)
+
+    # 📌 Status filter
+    status = request.GET.get('status')
+    if status:
+        events = events.filter(status=status)
+
+    # 👥 Participation filter
+    participation = request.GET.get('participation')
+    if participation:
+        events = events.filter(participation_type=participation)
+
+    # 📅 Date range filter
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    if start_date:
+        events = events.filter(event_date__gte=start_date)
+
+    if end_date:
+        events = events.filter(event_date__lte=end_date)
+
+    context = {
+        'events': events,
+        'page_title': page_title,
+    }
+
+    return render(request,
+                  'events/faculty_filter.html',
                   context)

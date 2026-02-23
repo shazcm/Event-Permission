@@ -16,6 +16,11 @@ class EventForm(forms.ModelForm):
             'event_date',
             'description',
         ]
+        widgets = {
+            'event_date': forms.DateInput(
+                attrs={'type': 'date'}
+            ),
+        }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
