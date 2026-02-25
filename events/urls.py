@@ -28,9 +28,9 @@ urlpatterns = [
         views.analytics_dashboard,
         name='analytics_dashboard'),
 
-    path('principal/filter/',
-        views.filter_events,
-        name='filter_events'),
+    path('principal/all/',
+        views.view_all_events,
+        name='view_all_events'),
 
     path('faculty/filter/',
         views.faculty_filter_events,
