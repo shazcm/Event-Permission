@@ -6,6 +6,49 @@ from django.utils import timezone
 from .forms import PostEventForm
 from django.db.models import Count
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django import forms
+from .models import Venue
+from django.contrib import messages
+
+@login_required
+def change_event_venue(request, event_id):
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    event = get_object_or_404(Event, id=event_id)
+
+    # ✅ Only approved events
+    if event.status != 'approved':
+        messages.error(request, "Venue can only be changed for approved events.")
+        return redirect('filter_events')
+
+    # ✅ Prevent change after event date passed
+    today = timezone.now().date()
+
+    if event.event_date < today:
+        messages.error(request, "Cannot change venue. Event date has already passed.")
+        return redirect('filter_events')
+
+    class VenueUpdateForm(forms.ModelForm):
+        class Meta:
+            model = Event
+            fields = ['venue']
+
+    if request.method == 'POST':
+        form = VenueUpdateForm(request.POST, instance=event)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Venue updated successfully.")
+            return redirect('filter_events')
+    else:
+        form = VenueUpdateForm(instance=event)
+
+    return render(request,
+                  'events/change_venue.html',
+                  {'form': form, 'event': event})
+
 
 @login_required
 def create_event(request):
@@ -257,3 +300,56 @@ def faculty_filter_events(request):
     return render(request,
                   'events/faculty_filter.html',
                   context)
+
+
+
+@login_required
+def principal_approved_events(request):
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    approved_events = Event.objects.filter(status='approved').order_by('-event_date')
+
+    return render(request,
+                  'events/principal_approved.html',
+                  {'approved_events': approved_events})
+
+
+@login_required
+def change_event_venue(request, event_id):
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    event = get_object_or_404(Event, id=event_id)
+
+    # ✅ Only approved events
+    if event.status != 'approved':
+        messages.error(request, "Venue can only be changed for approved events.")
+        return redirect('filter_events')
+
+    # ✅ Prevent change after event date passed
+    today = timezone.now().date()
+
+    if event.event_date < today:
+        messages.error(request, "Cannot change venue. Event date has already passed.")
+        return redirect('filter_events')
+
+    class VenueUpdateForm(forms.ModelForm):
+        class Meta:
+            model = Event
+            fields = ['venue']
+
+    if request.method == 'POST':
+        form = VenueUpdateForm(request.POST, instance=event)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Venue updated successfully.")
+            return redirect('filter_events')
+    else:
+        form = VenueUpdateForm(instance=event)
+
+    return render(request,
+                  'events/change_venue.html',
+                  {'form': form, 'event': event})

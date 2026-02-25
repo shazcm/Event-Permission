@@ -1,0 +1,12 @@
+<h2>Change Venue</h2>
+
+<p>
+    Event: <b>{{ event.title }}</b><br>
+    Current Venue: {{ event.venue }}
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Update Venue</button>
+</form>

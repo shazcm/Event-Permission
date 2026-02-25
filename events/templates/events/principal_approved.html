@@ -1,0 +1,20 @@
+<h2>Approved Events</h2>
+
+<hr>
+
+{% for e in approved_events %}
+
+    <b>{{ e.title }}</b> —
+    {{ e.department }} —
+    {{ e.venue }} —
+    {{ e.event_date }}
+
+    <a href="{% url 'change_event_venue' e.id %}">
+        <button>Change Venue</button>
+    </a>
+
+    <br><br>
+
+{% empty %}
+    No approved events.
+{% endfor %}

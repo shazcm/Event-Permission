@@ -36,5 +36,13 @@ urlpatterns = [
         views.faculty_filter_events,
         name='faculty_filter_events'),
 
+    path('change-venue/<int:event_id>/',
+        views.change_event_venue,
+        name='change_event_venue'),
+
+     path('principal/approved/',
+        views.principal_approved_events,
+        name='principal_approved_events'),
+
 
 ]

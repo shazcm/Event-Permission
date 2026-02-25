@@ -1,5 +1,9 @@
 <h2>Search & Filter Events</h2>
-
+{% if messages %}
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+{% endif %}
 <form method="get">
 
     🔎 Search:
@@ -65,6 +69,11 @@
     {{ e.participation_type }} —
     {{ e.status }} —
     {{ e.event_date }}
+    {% if e.status == 'approved' %}
+    <a href="{% url 'change_event_venue' e.id %}">
+    <button>Change Venue</button>
+    </a>
+    {% endif %}
     <br>
 {% empty %}
     No events found.
