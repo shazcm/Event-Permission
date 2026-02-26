@@ -53,9 +53,23 @@ def principal_event_action(request, event_id, action):
     if request.user.role != 'principal':
         return redirect('login')
 
-    event = Event.objects.get(id=event_id)
+    event = get_object_or_404(Event, id=event_id)
 
     if action == 'approve':
+
+        conflict_exists = Event.objects.filter(
+            venue=event.venue,
+            event_date=event.event_date,
+            status='approved'
+        ).exists()
+
+        if conflict_exists:
+            messages.error(
+                request,
+                "Approval blocked! Another approved event is already scheduled at this venue on the same date."
+            )
+            return redirect('principal_pending_events')
+
         event.status = 'approved'
         event.principal_remark = ''
 
@@ -279,25 +293,26 @@ def principal_approved_events(request):
                   {'approved_events': approved_events})
 
 
+
 @login_required
 def change_event_venue(request, event_id):
+
 
     if request.user.role != 'principal':
         return redirect('login')
 
     event = get_object_or_404(Event, id=event_id)
 
-    # ✅ Only approved events
+
     if event.status != 'approved':
         messages.error(request, "Venue can only be changed for approved events.")
-        return redirect('view_all_events')
+        return redirect('principal_approved_events')
 
-    # ✅ Prevent change after event date passed
+
     today = timezone.now().date()
-
     if event.event_date < today:
         messages.error(request, "Cannot change venue. Event date has already passed.")
-        return redirect('view_all_events')
+        return redirect('principal_approved_events')
 
     class VenueUpdateForm(forms.ModelForm):
         class Meta:
@@ -306,10 +321,31 @@ def change_event_venue(request, event_id):
 
     if request.method == 'POST':
         form = VenueUpdateForm(request.POST, instance=event)
+
         if form.is_valid():
+
+            selected_venue = form.cleaned_data['venue']
+
+            
+            conflict_exists = Event.objects.filter(
+                venue=selected_venue,
+                event_date=event.event_date,
+                status='approved'
+            ).exclude(id=event.id).exists()
+
+            if conflict_exists:
+                messages.error(
+                    request,
+                    "Conflict! Another approved event is already scheduled at this venue on the same date."
+                )
+                return render(request,
+                              'events/change_venue.html',
+                              {'form': form, 'event': event})
+
             form.save()
             messages.success(request, "Venue updated successfully.")
-            return redirect('view_all_events')
+            return redirect('principal_approved_events')
+
     else:
         form = VenueUpdateForm(instance=event)
 
