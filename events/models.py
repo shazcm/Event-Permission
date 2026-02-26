@@ -64,7 +64,10 @@ class Event(models.Model):
     on_delete=models.PROTECT
     )
 
-    event_date = models.DateField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
 
     description = models.TextField()
 

@@ -8,18 +8,23 @@ class EventForm(forms.ModelForm):
         model = Event
         fields = [
             'title',
+            'start_date',
+            'end_date',
+            'start_time',
+            'end_time',
+            'venue',
             'category',
             'department',
             'participation_type',
             'budget',
-            'venue',
-            'event_date',
             'description',
         ]
+
         widgets = {
-            'event_date': forms.DateInput(
-                attrs={'type': 'date'}
-            ),
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -28,6 +33,26 @@ class EventForm(forms.ModelForm):
 
         if user and user.sub_role == 'hod':
             self.fields['department'].widget = forms.HiddenInput()
+
+    # ✅ Time validation
+    def clean(self):
+        cleaned_data = super().clean()
+
+        start = cleaned_data.get('start_time')
+        end = cleaned_data.get('end_time')
+
+        if start and end:
+            if start >= end:
+                self.add_error('end_time', "End time must be after start time.")
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+
+        if start_date and end_date:
+            if start_date > end_date:
+                self.add_error('end_date', "End date must be after start date.")
+
+        return cleaned_data
+
 
 class PostEventForm(forms.ModelForm):
     class Meta:

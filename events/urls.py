@@ -44,5 +44,8 @@ urlpatterns = [
         views.principal_approved_events,
         name='principal_approved_events'),
 
+    path('check-conflict/',
+        views.check_venue_conflict,
+        name='check_venue_conflict'),
 
 ]

@@ -12,21 +12,26 @@ from .models import Venue
 from django.contrib import messages
 
 
-
 @login_required
 def create_event(request):
 
     if request.method == "POST":
         form = EventForm(request.POST, user=request.user)
+
         if form.is_valid():
             event = form.save(commit=False)
+
             event.created_by = request.user
 
             if request.user.sub_role == 'hod':
                 event.department = request.user.department
 
             event.save()
-            return redirect('faculty_dashboard')
+
+            messages.success(request, "Event submitted successfully.")
+
+            # Reload empty form after submission
+            form = EventForm(user=request.user)
 
     else:
         form = EventForm(user=request.user)
@@ -57,16 +62,18 @@ def principal_event_action(request, event_id, action):
 
     if action == 'approve':
 
+        # 🔴 Check for overlapping approved events (exclude itself)
         conflict_exists = Event.objects.filter(
             venue=event.venue,
-            event_date=event.event_date,
-            status='approved'
-        ).exists()
+            status='approved',
+            start_date__lte=event.end_date,
+            end_date__gte=event.start_date
+        ).exclude(id=event.id).exists()
 
         if conflict_exists:
             messages.error(
                 request,
-                "Approval blocked! Another approved event is already scheduled at this venue on the same date."
+                "Approval blocked! Another approved event overlaps at this venue during the selected date range."
             )
             return redirect('principal_pending_events')
 
@@ -81,7 +88,6 @@ def principal_event_action(request, event_id, action):
     event.save()
 
     return redirect('principal_pending_events')
-
 
 @login_required
 def post_event_upload(request, event_id):
@@ -188,15 +194,19 @@ def view_all_events(request):
     if participation:
         events = events.filter(participation_type=participation)
 
-    # 📅 Date range filter
+    # 📅 Date range filter (UPDATED)
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    if start_date:
-        events = events.filter(event_date__gte=start_date)
-
-    if end_date:
-        events = events.filter(event_date__lte=end_date)
+    if start_date and end_date:
+        events = events.filter(
+            start_date__lte=end_date,
+            end_date__gte=start_date
+        )
+    elif start_date:
+        events = events.filter(end_date__gte=start_date)
+    elif end_date:
+        events = events.filter(start_date__lte=end_date)
 
     departments = Department.objects.all()
 
@@ -208,7 +218,6 @@ def view_all_events(request):
     return render(request, 
                   'events/view_all_events.html', 
                   context)
-
 
 
 @login_required
@@ -259,15 +268,19 @@ def faculty_filter_events(request):
     if participation:
         events = events.filter(participation_type=participation)
 
-    # 📅 Date range filter
+    # 📅 Date range filter (UPDATED)
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    if start_date:
-        events = events.filter(event_date__gte=start_date)
-
-    if end_date:
-        events = events.filter(event_date__lte=end_date)
+    if start_date and end_date:
+        events = events.filter(
+            start_date__lte=end_date,
+            end_date__gte=start_date
+        )
+    elif start_date:
+        events = events.filter(end_date__gte=start_date)
+    elif end_date:
+        events = events.filter(start_date__lte=end_date)
 
     context = {
         'events': events,
@@ -279,39 +292,50 @@ def faculty_filter_events(request):
                   context)
 
 
-
 @login_required
 def principal_approved_events(request):
 
     if request.user.role != 'principal':
         return redirect('login')
 
-    approved_events = Event.objects.filter(status='approved').order_by('-event_date')
+    today = timezone.now().date()
 
-    return render(request,
-                  'events/principal_approved.html',
-                  {'approved_events': approved_events})
+    approved_events = Event.objects.filter(
+        status='approved'
+    ).order_by('-start_date')
+
+    context = {
+        'approved_events': approved_events,
+        'today': today
+    }
+
+    return render(
+        request,
+        'events/principal_approved.html',
+        context
+    )
 
 
+from django.db.models import Q
+from django.utils import timezone
 
 @login_required
 def change_event_venue(request, event_id):
-
 
     if request.user.role != 'principal':
         return redirect('login')
 
     event = get_object_or_404(Event, id=event_id)
 
-
+    # Only approved events can change venue
     if event.status != 'approved':
         messages.error(request, "Venue can only be changed for approved events.")
         return redirect('principal_approved_events')
 
-
+    # Prevent change if event already started
     today = timezone.now().date()
-    if event.event_date < today:
-        messages.error(request, "Cannot change venue. Event date has already passed.")
+    if event.start_date < today:
+        messages.error(request, "Cannot change venue. Event has already started or passed.")
         return redirect('principal_approved_events')
 
     class VenueUpdateForm(forms.ModelForm):
@@ -323,20 +347,21 @@ def change_event_venue(request, event_id):
         form = VenueUpdateForm(request.POST, instance=event)
 
         if form.is_valid():
-
             selected_venue = form.cleaned_data['venue']
 
-            
+            # 🔥 CORRECT OVERLAP DETECTION
             conflict_exists = Event.objects.filter(
                 venue=selected_venue,
-                event_date=event.event_date,
                 status='approved'
-            ).exclude(id=event.id).exists()
+            ).exclude(id=event.id).filter(
+                start_date__lte=event.end_date,
+                end_date__gte=event.start_date
+            ).exists()
 
             if conflict_exists:
                 messages.error(
                     request,
-                    "Conflict! Another approved event is already scheduled at this venue on the same date."
+                    "Conflict! Another approved event overlaps at this venue during the selected date range."
                 )
                 return render(request,
                               'events/change_venue.html',
@@ -352,3 +377,46 @@ def change_event_venue(request, event_id):
     return render(request,
                   'events/change_venue.html',
                   {'form': form, 'event': event})
+
+from django.http import JsonResponse
+from datetime import datetime
+
+@login_required
+def check_venue_conflict(request):
+
+    venue_id = request.GET.get('venue')
+    new_start = request.GET.get('start_date')
+    new_end = request.GET.get('end_date')
+
+    if venue_id and new_start and new_end:
+
+        new_start = datetime.strptime(new_start, "%Y-%m-%d").date()
+        new_end = datetime.strptime(new_end, "%Y-%m-%d").date()
+
+        approved_event = Event.objects.filter(
+            venue_id=venue_id,
+            status='approved',
+            start_date__lte=new_end,
+            end_date__gte=new_start
+        ).first()
+
+        if approved_event:
+            return JsonResponse({
+                'status': 'approved',
+                'title': approved_event.title
+            })
+
+        pending_event = Event.objects.filter(
+            venue_id=venue_id,
+            status='pending',
+            start_date__lte=new_end,
+            end_date__gte=new_start
+        ).first()
+
+        if pending_event:
+            return JsonResponse({
+                'status': 'pending',
+                'title': pending_event.title
+            })
+
+    return JsonResponse({'status': 'clear'})
