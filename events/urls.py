@@ -48,4 +48,12 @@ urlpatterns = [
         views.check_venue_conflict,
         name='check_venue_conflict'),
 
+    path('events/<int:event_id>/',
+        views.event_detail,
+        name='event_detail'),
+
+    path('events/<int:event_id>/download-report/',
+        views.download_detailed_report,
+        name='download_detailed_report'),
+
 ]

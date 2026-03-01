@@ -1,3 +1,4 @@
+{% load event_extras %}
 <h2>Pending Event Proposals</h2>
 {% if messages %}
     {% for message in messages %}
@@ -9,10 +10,15 @@
 {% for e in events %}
     <hr>
     <b>{{ e.title }}</b><br>
+    Organized By: {{ e.created_by.username }}<br>
+    Chief Guest: {{ e.chief_guest }}<br>
     Category: {{ e.category }}<br>
     Department: {{ e.department }}<br>
-    Date: {{ e.event_date }}<br>
+    Date & Time :{{ e|format_event_datetime }}<br>
+    Venue: {{ e.venue }}<br>
+    Participation: {{ e.participation_type }}<br>
     Budget: {{ e.budget }}<br>
+    Description: {{ e.description }}<br>
 
     <!-- Approve -->
     <form method="post"

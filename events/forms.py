@@ -1,6 +1,6 @@
 from django import forms
 from .models import Event
-
+from .models import EventPhoto
 
 class EventForm(forms.ModelForm):
 
@@ -12,8 +12,8 @@ class EventForm(forms.ModelForm):
             'end_date',
             'start_time',
             'end_time',
+            'chief_guest',
             'venue',
-            'category',
             'department',
             'participation_type',
             'budget',
@@ -31,8 +31,10 @@ class EventForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if user and user.sub_role == 'hod':
-            self.fields['department'].widget = forms.HiddenInput()
+        if user:
+            self.fields['department'].widget=forms.HiddenInput()
+            if 'category' in self.fields:
+                    self.fields['category'].widget=forms.HiddenInput()
 
     # ✅ Time validation
     def clean(self):
@@ -57,4 +59,9 @@ class EventForm(forms.ModelForm):
 class PostEventForm(forms.ModelForm):
     class Meta:
         model = Event
-        fields = ['report_text', 'attendance_file', 'photo']
+        fields = [ 'attendance_file', 'completed_at']
+
+class EventPhotoForm(forms.ModelForm):
+    class Meta:
+        model = EventPhoto
+        fields = ['image']

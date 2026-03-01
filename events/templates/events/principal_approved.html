@@ -1,19 +1,17 @@
+{% load event_extras %}
 <h2>Approved Events</h2>
-{% if messages %}
-    {% for message in messages %}
-        <p style="color:red;">
-            {{ message }}
-        </p>
-    {% endfor %}
-{% endif %}
 <hr>
 
 {% for e in approved_events %}
 
-    <b>{{ e.title }}</b> —
+    <a href="{% url 'event_detail' e.id %}">
+    <b>{{ e.title }}</b>
+    </a> —
     {{ e.department }} —
     {{ e.venue }} —
-    {{ e.event_date }}
+    {{ e.category }} —
+    {{ e.participation_type }} —
+    {{ e|format_event_datetime }}
 
     <a href="{% url 'change_event_venue' e.id %}">
         <button>Change Venue</button>

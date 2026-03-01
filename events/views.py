@@ -10,6 +10,21 @@ from django.shortcuts import get_object_or_404
 from django import forms
 from .models import Venue
 from django.contrib import messages
+from django.http import JsonResponse
+from datetime import datetime
+from django.utils import timezone
+from .models import EventPhoto
+from .forms import EventPhotoForm
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from django.http import HttpResponse
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.platypus import ListFlowable, ListItem
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER
+import os
+
 
 
 @login_required
@@ -20,6 +35,17 @@ def create_event(request):
 
         if form.is_valid():
             event = form.save(commit=False)
+            user=request.user
+            if user.sub_role == 'hod':
+                event.category = 'department'
+            elif user.sub_role == 'nss':
+                event.category = 'nss'
+            elif user.sub_role == 'ncc':
+                event.category = 'ncc'
+            elif user.sub_role == 'union':
+                event.category = 'union'
+            else:
+                event.category = 'other'
 
             event.created_by = request.user
 
@@ -89,29 +115,110 @@ def principal_event_action(request, event_id, action):
 
     return redirect('principal_pending_events')
 
+
+  # adjust import if needed
+
+
+def generate_auto_report(event):
+
+    # Organizer Text
+    if event.created_by.sub_role == "hod":
+        organizer_text = f"The Department of {event.department}"
+    elif event.created_by.sub_role == "nss":
+        organizer_text = "The NSS Unit"
+    elif event.created_by.sub_role == "ncc":
+        organizer_text = "The NCC Unit"
+    elif event.created_by.sub_role == "union":
+        organizer_text = "The College Union"
+    else:
+        organizer_text = "The organizing committee"
+
+    # Date Formatting
+    if event.start_date == event.end_date:
+        date_text = event.start_date.strftime("%d %B %Y")
+    else:
+        date_text = (
+            f"{event.start_date.strftime('%d %B %Y')} "
+            f"to {event.end_date.strftime('%d %B %Y')}"
+        )
+
+    # Chief Guest Text
+    chief_guest_text = ""
+    if event.chief_guest:
+        chief_guest_text = (
+            f" The programme was graced by "
+            f"{event.chief_guest} as the Chief Guest."
+        )
+
+    # Attendance & Photos
+    photo_count = event.photos.count()
+    attendance_status = (
+        "The attendance record has been officially submitted."
+        if event.attendance_file
+        else "No attendance record was submitted."
+    )
+
+    # Final Report
+    return f"""
+{organizer_text} successfully organized the event titled "{event.title}" 
+at {event.venue} on {date_text}.{chief_guest_text}
+
+The event witnessed active participation and was conducted 
+in a well-structured manner.
+
+{attendance_status}
+
+A total of {photo_count} photographic records were documented 
+as part of the official event proceedings.
+"""
+
 @login_required
 def post_event_upload(request, event_id):
 
-    event = Event.objects.get(id=event_id)
+    event = get_object_or_404(Event, id=event_id)
 
+    # Only event creator can access
     if event.created_by != request.user:
         return redirect('faculty_dashboard')
 
     if request.method == "POST":
-        form = PostEventForm(request.POST, request.FILES, instance=event)
-        if form.is_valid():
-            ev = form.save(commit=False)
-            ev.status = 'completed'
-            ev.completed_at = timezone.now()
-            ev.save()
+
+        # ---- Handle Attendance Upload ----
+        if request.FILES.get('attendance_file'):
+            event.attendance_file = request.FILES.get('attendance_file')
+
+        # ---- Handle Image Upload (Max 5) ----
+        images = request.FILES.getlist('images')
+
+        existing_count = event.photos.count()
+        new_count = len(images)
+
+        if existing_count + new_count > 5:
+            messages.error(request, "An event can have maximum 5 photos.")
+        else:
+            for image in images:
+                EventPhoto.objects.create(
+                    event=event,
+                    image=image
+                )
+
+        # ---- Generate Report Button ----
+        if "generate_report" in request.POST:
+            event.report_text = generate_auto_report(event)
+            event.save()
+
+        # ---- Submit Final Report Button ----
+        if "submit_report" in request.POST:
+            event.report_text = request.POST.get("report_text")
+            event.status = "completed"
+            event.save()
             return redirect('faculty_dashboard')
 
-    else:
-        form = PostEventForm(instance=event)
+        event.save()
 
-    return render(request,
-                  'events/post_upload.html',
-                  {'form': form, 'event': event})
+    return render(request, 'events/post_upload.html', {
+        'event': event
+    })
 
 @login_required
 def principal_verify_list(request):
@@ -131,11 +238,13 @@ def principal_verify_event(request, event_id):
     if request.user.role != 'principal':
         return redirect('login')
 
-    event = Event.objects.get(id=event_id)
-    event.status = 'verified'
-    event.save()
+    event = get_object_or_404(Event, id=event_id)
 
-    return redirect('principal_verify_list')
+    if request.method == "POST" and event.status == "completed":
+        event.status = 'verified'
+        event.save()
+
+    return redirect('event_detail', event_id=event.id)
 
 
 @login_required
@@ -167,17 +276,15 @@ def view_all_events(request):
     if request.user.role != 'principal':
         return redirect('login')
 
-    events = Event.objects.all()
+    events = Event.objects.filter(
+    status__in=['completed', 'verified']
+    ).order_by('-start_date')
 
     # 🔎 Search by title
     search = request.GET.get('search')
     if search:
         events = events.filter(title__icontains=search)
 
-    # 📌 Status filter
-    status = request.GET.get('status')
-    if status:
-        events = events.filter(status=status)
 
     # 🏢 Department filter
     department = request.GET.get('department')
@@ -208,11 +315,20 @@ def view_all_events(request):
     elif end_date:
         events = events.filter(start_date__lte=end_date)
 
+    show_verified = request.GET.get('verified')
+
+    if show_verified == "1":
+        events = events.filter(status='verified')
+        show_verified = True
+    else:
+        show_verified = False
+
     departments = Department.objects.all()
 
     context = {
         'events': events,
         'departments': departments,
+        'show_verified': show_verified,
     }
 
     return render(request, 
@@ -260,8 +376,17 @@ def faculty_filter_events(request):
 
     # 📌 Status filter
     status = request.GET.get('status')
-    if status:
+    if status is None:
+        events = events.filter(status__in=['completed', 'verified'])
+        selected_status = "conducted"
+
+    elif status == "conducted":
+        events = events.filter(status__in=['completed', 'verified'])
+        selected_status = "conducted"
+
+    else:
         events = events.filter(status=status)
+        selected_status = status
 
     # 👥 Participation filter
     participation = request.GET.get('participation')
@@ -285,6 +410,7 @@ def faculty_filter_events(request):
     context = {
         'events': events,
         'page_title': page_title,
+        'selected_status': selected_status,
     }
 
     return render(request,
@@ -316,9 +442,6 @@ def principal_approved_events(request):
     )
 
 
-from django.db.models import Q
-from django.utils import timezone
-
 @login_required
 def change_event_venue(request, event_id):
 
@@ -327,15 +450,13 @@ def change_event_venue(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
 
-    # Only approved events can change venue
     if event.status != 'approved':
         messages.error(request, "Venue can only be changed for approved events.")
         return redirect('principal_approved_events')
 
-    # Prevent change if event already started
     today = timezone.now().date()
-    if event.start_date < today:
-        messages.error(request, "Cannot change venue. Event has already started or passed.")
+    if event.end_date < today:
+        messages.error(request, "Cannot change venue. Event has already ended.")
         return redirect('principal_approved_events')
 
     class VenueUpdateForm(forms.ModelForm):
@@ -349,7 +470,6 @@ def change_event_venue(request, event_id):
         if form.is_valid():
             selected_venue = form.cleaned_data['venue']
 
-            # 🔥 CORRECT OVERLAP DETECTION
             conflict_exists = Event.objects.filter(
                 venue=selected_venue,
                 status='approved'
@@ -363,9 +483,16 @@ def change_event_venue(request, event_id):
                     request,
                     "Conflict! Another approved event overlaps at this venue during the selected date range."
                 )
-                return render(request,
-                              'events/change_venue.html',
-                              {'form': form, 'event': event})
+
+                # Reload clean form from database
+                event.refresh_from_db()
+                form = VenueUpdateForm(instance=event)
+
+                return render(
+                    request,
+                    'events/change_venue.html',
+                    {'form': form, 'event': event}
+                )
 
             form.save()
             messages.success(request, "Venue updated successfully.")
@@ -374,12 +501,12 @@ def change_event_venue(request, event_id):
     else:
         form = VenueUpdateForm(instance=event)
 
-    return render(request,
-                  'events/change_venue.html',
-                  {'form': form, 'event': event})
+    return render(
+        request,
+        'events/change_venue.html',
+        {'form': form, 'event': event}
+    )
 
-from django.http import JsonResponse
-from datetime import datetime
 
 @login_required
 def check_venue_conflict(request):
@@ -420,3 +547,82 @@ def check_venue_conflict(request):
             })
 
     return JsonResponse({'status': 'clear'})
+
+@login_required
+def event_detail(request, event_id):
+
+    event = get_object_or_404(Event, id=event_id)
+
+    return render(request,
+                  'events/event_detail.html',
+                  {'event': event})
+
+
+
+
+
+def download_detailed_report(request, event_id):
+
+    event = get_object_or_404(Event, id=event_id)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="{event.title}_Detailed_Report.pdf"'
+    )
+
+    doc = SimpleDocTemplate(response, pagesize=A4)
+    elements = []
+
+    styles = getSampleStyleSheet()
+
+    # ---- Title ----
+    title_style = styles["Heading1"]
+    title_style.alignment = TA_CENTER
+    elements.append(Paragraph("DETAILED EVENT REPORT", title_style))
+    elements.append(Spacer(1, 20))
+
+    # ---- Basic Details ----
+    details = f"""
+    <b>Event Title:</b> {event.title}<br/>
+    <b>Department:</b> {event.department}<br/>
+    <b>Venue:</b> {event.venue}<br/>
+    <b>Date:</b> {event.start_date} to {event.end_date}<br/>
+    <b>Chief Guest:</b> {event.chief_guest if event.chief_guest else "N/A"}<br/>
+    """
+
+    elements.append(Paragraph(details, styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    # ---- Report Text ----
+    elements.append(Paragraph("<b>Event Description:</b>", styles["Heading3"]))
+    elements.append(Spacer(1, 10))
+
+    report_text = event.report_text if event.report_text else "No report available."
+    elements.append(
+        Paragraph(report_text.replace("\n", "<br/>"), styles["Normal"])
+    )
+    elements.append(Spacer(1, 20))
+
+    # ---- Photos Section ----
+    elements.append(Paragraph("<b>Event Photos:</b>", styles["Heading3"]))
+    elements.append(Spacer(1, 10))
+
+    for photo in event.photos.all():
+        image_path = photo.image.path
+        if os.path.exists(image_path):
+            img = Image(image_path, width=4 * inch, height=3 * inch)
+            elements.append(img)
+            elements.append(Spacer(1, 15))
+
+    # ---- Footer ----
+    elements.append(Spacer(1, 30))
+    elements.append(
+        Paragraph(
+            f"Generated on {datetime.now().strftime('%d %B %Y, %I:%M %p')}",
+            styles["Normal"]
+        )
+    )
+
+    doc.build(elements)
+
+    return response

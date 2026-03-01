@@ -1,3 +1,4 @@
+{% load event_extras %}
 <h2>{{ page_title }}</h2>
 
 <form method="get">
@@ -7,14 +8,37 @@
            value="{{ request.GET.search }}">
 
     Status:
-    <select name="status">
-        <option value="">All</option>
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="completed">Completed</option>
-        <option value="verified">Verified</option>
-        <option value="rejected">Rejected</option>
-    </select>
+        <select name="status">
+            <option value="conducted"
+                {% if selected_status == "conducted" %}selected{% endif %}>
+                Conducted Events
+            </option>
+
+            <option value="pending"
+                {% if selected_status == "pending" %}selected{% endif %}>
+                Pending
+            </option>
+
+            <option value="approved"
+                {% if selected_status == "approved" %}selected{% endif %}>
+                Approved
+            </option>
+
+            <option value="completed"
+                {% if selected_status == "completed" %}selected{% endif %}>
+                Completed(Unverified)
+            </option>
+
+            <option value="verified"
+                {% if selected_status == "verified" %}selected{% endif %}>
+                Verified
+            </option>
+
+            <option value="rejected"
+                {% if selected_status == "rejected" %}selected{% endif %}>
+                Rejected
+            </option>
+        </select>
 
     Participation:
     <select name="participation">
@@ -38,10 +62,32 @@
 <hr>
 
 {% for e in events %}
-    <b>{{ e.title }}</b> —
+    <a href="{% url 'event_detail' e.id %}">
+    <b>{{ e.title }}</b>
+    </a> —
     {{ e.status }} —
     {{ e.participation_type }} —
-    {{ e.event_date }}
+    {{ e|format_event_datetime }}
+    {% if e.status == "verified" %}
+        <span style="
+            background:#28a745;
+            color:white;
+            padding:3px 8px;
+            border-radius:12px;
+            font-size:12px;">
+            Verified
+        </span>
+
+    {% elif e.status == "completed" %}
+        <span style="
+            background:#ffc107;
+            color:black;
+            padding:3px 8px;
+            border-radius:12px;
+            font-size:12px;">
+            Unverified
+        </span>
+    {% endif %}
     <br>
 {% empty %}
     No events found.

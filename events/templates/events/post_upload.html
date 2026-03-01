@@ -1,8 +1,38 @@
 <h2>Post Event Upload — {{ event.title }}</h2>
+{% if messages %}
+    {% for message in messages %}
+        <p style="color:red;">{{ message }}</p>
+    {% endfor %}
+{% endif %}
+
 
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    {{ form.as_p }}
 
-    <button type="submit">Submit Post-Event Details</button>
+    <label>Attendance File:</label>
+    <input type="file" name="attendance_file">
+    <br><br>
+
+    <label>Upload Photos (Max 5):</label>
+    <input type="file" name="images" multiple>
+    <br><br>
+
+    <button type="submit" name="generate_report">
+        Generate Report
+    </button>
+
+    {% if event.report_text %}
+        <br><br>
+        <h3>Generated Report</h3>
+
+        <textarea name="report_text" rows="12" style="width: 100%;">
+{{ event.report_text }}
+        </textarea>
+
+        <br><br>
+        <button type="submit" name="submit_report">
+            Submit Final Report
+        </button>
+    {% endif %}
+
 </form>

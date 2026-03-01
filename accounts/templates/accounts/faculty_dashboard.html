@@ -7,12 +7,12 @@
     <button>{{ button_label }}</button>
 </a>
 <h3>Your Events</h3>
-
+{% load event_extras %}
 {% for e in my_events %}
     <b>{{ e.title }}</b> —
     {{ e.status }} —
     {{ e.participation_type }} —
-    {{ e.event_date }}
+    {{ e|format_event_datetime }}
 
     {% if e.status == 'approved' %}
         <a href="/events/post-upload/{{ e.id }}/">

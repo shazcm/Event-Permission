@@ -1,0 +1,95 @@
+<link href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" rel="stylesheet">
+{% load event_extras %}
+<h2>Event Details</h2>
+
+<hr>
+<h3>{{ event.title }}</h3>
+<p><strong>Organized By:</strong> {{ event.created_by.username }}</p>
+<p><strong>Chief Guest:</strong> {{ event.chief_guest }}</p>
+<p><strong>Department:</strong> {{ event.department }}</p>
+<p><strong>Category:</strong> {{ event.category }}</p>
+<p><strong>Participation:</strong> {{ event.participation_type }}</p>
+<p><strong>Budget:</strong> ₹{{ event.budget }}</p>
+<p><strong>Venue:</strong> {{ event.venue }}</p>
+<p><strong>Date & Time:</strong>{{ event|format_event_datetime }}
+<p><strong>Status:</strong> {{ event.status }}</p>
+<hr>
+<h4>Description</h4>
+<p>{{ event.description }}</p>
+
+{% if event.report_text %}
+<hr>
+<h4>Post Event Report</h4>
+<p>{{ event.report_text }}</p>
+{% endif %}
+<hr>
+<h4>Event Attendance</h4>
+{% if event.attendance_file %}
+        <a href="{{ event.attendance_file.url }}">Attendance File</a><br>
+    {% endif %}
+
+<hr>
+<h4>Event Photos</h4>
+
+<div style="display:flex; flex-wrap:wrap; gap:15px;">
+
+{% for photo in event.photos.all %}
+    <a href="{{ photo.image.url }}"
+       data-lightbox="event-gallery"
+       data-title="{{ event.title }}">
+
+        <img src="{{ photo.image.url }}"
+             style="
+                width:200px;
+                height:150px;
+                object-fit:cover;
+                border-radius:8px;
+                cursor:pointer;
+                box-shadow:0 2px 6px rgba(0,0,0,0.2);
+             ">
+    </a>
+{% empty %}
+    <p>No photos uploaded.</p>
+{% endfor %}
+
+</div>
+
+<br><br>
+
+<a href="{% url 'download_detailed_report' event.id %}" style="
+    background: #1f4e79;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    text-decoration: none;
+    display: inline-block;
+">
+    Download Detailed Report
+</a>
+
+{% if request.user.role == "principal" and event.status == "completed" %}
+
+    <hr>
+
+    <form method="post" action="{% url 'principal_verify_event' event.id %}">
+        {% csrf_token %}
+        <button type="submit" style="
+            background:#28a745;
+            color:white;
+            padding:8px 15px;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;">
+            Verify Event
+        </button>
+    </form>
+
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+<script>
+    const lightbox = GLightbox({
+        selector: 'data-lightbox',
+        touchNavigation: true,
+        loop: true,
+    });
+</script>
