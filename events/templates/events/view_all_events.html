@@ -1,146 +1,97 @@
+{% extends "base.html" %}
 {% load event_extras %}
-<h2>Conducted Events</h2>
-{% if messages %}
-    {% for message in messages %}
-        <p>{{ message }}</p>
+
+{% block title %}All Conducted Events{% endblock %}
+{% block page_title %}All Events{% endblock %}
+{% block page_subtitle %}Search and filter completed or verified events across the institution.{% endblock %}
+
+{% block content %}
+<section class="panel" style="margin-bottom:14px;">
+    <form method="get">
+        <div class="filters">
+            <div>
+                <label for="search">Search</label>
+                <input id="search" type="text" name="search" value="{{ request.GET.search }}" placeholder="Event title">
+            </div>
+            <div>
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="">All</option>
+                    <option value="department" {% if request.GET.category == 'department' %}selected{% endif %}>Department</option>
+                    <option value="nss" {% if request.GET.category == 'nss' %}selected{% endif %}>NSS</option>
+                    <option value="ncc" {% if request.GET.category == 'ncc' %}selected{% endif %}>NCC</option>
+                    <option value="union" {% if request.GET.category == 'union' %}selected{% endif %}>Union</option>
+                    <option value="other" {% if request.GET.category == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div>
+                <label for="department">Department</label>
+                <select id="department" name="department">
+                    <option value="">All</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:'s' %}selected{% endif %}>{{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="participation">Participation</label>
+                <select id="participation" name="participation">
+                    <option value="">All</option>
+                    <option value="boys" {% if request.GET.participation == 'boys' %}selected{% endif %}>Boys</option>
+                    <option value="girls" {% if request.GET.participation == 'girls' %}selected{% endif %}>Girls</option>
+                    <option value="mixed" {% if request.GET.participation == 'mixed' %}selected{% endif %}>Mixed</option>
+                </select>
+            </div>
+            <div>
+                <label for="start_date">Start Date</label>
+                <input id="start_date" type="date" name="start_date" value="{{ request.GET.start_date }}">
+            </div>
+            <div>
+                <label for="end_date">End Date</label>
+                <input id="end_date" type="date" name="end_date" value="{{ request.GET.end_date }}">
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button class="btn" type="submit">Search</button>
+            <label style="display:flex;align-items:center;gap:8px;margin:0;">
+                <input style="width:auto;margin:0;" type="checkbox" name="verified" value="1" {% if show_verified %}checked{% endif %} onchange="this.form.submit()">
+                Verified Only
+            </label>
+        </div>
+    </form>
+</section>
+
+<div class="muted" style="margin-bottom: 10px;">Showing {{ events|length }} event{{ events|pluralize }}</div>
+
+<section class="event-grid">
+    {% for e in events %}
+        <article class="event-card">
+            <div class="event-head">
+                <h3 class="event-title">{{ e.title }}</h3>
+                <span class="chip {{ e.status }}">{{ e.status|title }}</span>
+            </div>
+            <p class="event-desc">{{ e.description|truncatewords:18 }}</p>
+
+            <div class="meta-grid">
+                <div class="meta-row"><i class="fa-regular fa-user"></i><span class="meta-label">Organizer:</span><span class="meta-value">{{ e.created_by.get_full_name|default:e.created_by.username }}</span></div>
+                <div class="meta-row"><i class="fa-regular fa-building"></i><span class="meta-label">Dept:</span><span class="meta-value">{{ e.department|default:"General" }}</span></div>
+                <div class="meta-row"><i class="fa-regular fa-calendar"></i><span class="meta-label">Date:</span><span class="meta-value">{{ e.start_date|date:"d/m/Y" }}</span></div>
+                <div class="meta-row"><i class="fa-regular fa-clock"></i><span class="meta-label">Time:</span><span class="meta-value">{{ e.start_time|time:"h:i A"|default:"-" }} - {{ e.end_time|time:"h:i A"|default:"-" }}</span></div>
+                <div class="meta-row"><i class="fa-solid fa-location-dot"></i><span class="meta-label">Venue:</span><span class="meta-value">{{ e.venue }}</span></div>
+                <div class="meta-row"><i class="fa-regular fa-rectangle-list"></i><span class="meta-label">Type:</span><span class="meta-value">{{ e.category|title }}</span></div>
+                <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ e.participation_type|title }}</span></div>
+                <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ e.budget }}</span></div>
+            </div>
+
+            <div class="action-row">
+                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+            </div>
+        </article>
+    {% empty %}
+        <article class="event-card">
+            <p class="muted" style="margin:0;">No events found.</p>
+        </article>
     {% endfor %}
-{% endif %}
-
-<style>
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #28a745;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
-</style>
-<form method="get">
-
-    🔎 Search:
-    <input type="text" name="search"
-           value="{{ request.GET.search }}">
-
-    Category:
-    <select name="category">
-        <option value="">All</option>
-        <option value="department">Department</option>
-        <option value="nss">NSS</option>
-        <option value="ncc">NCC</option>
-        <option value="union">Union</option>
-        <option value="other">Other</option>
-    </select>
-
-    Department:
-    <select name="department">
-        <option value="">All</option>
-        {% for dept in departments %}
-            <option value="{{ dept.id }}">
-                {{ dept.name }}
-            </option>
-        {% endfor %}
-    </select>
-
-    Participation:
-    <select name="participation">
-        <option value="">All</option>
-        <option value="boys">Boys</option>
-        <option value="girls">Girls</option>
-        <option value="mixed">Mixed</option>
-    </select>
-
-    Start Date:
-    <input type="date" name="start_date"
-       value="{{ request.GET.start_date }}">
-
-    End Date:
-    <input type="date" name="end_date"
-       value="{{ request.GET.end_date }}">
-
-    <button type="submit">Search</button>
-
-    <label class="switch">
-        <input type="checkbox" name="verified" value="1"
-            {% if show_verified %}checked{% endif %}
-            onchange="this.form.submit()">
-        <span class="slider"></span>
-    </label>
-    <span style="font-size:14px; color:#555;">
-        Verified Only
-    </span>
-
-</form>
-
-<hr>
-
-{% for e in events %}
-    <a href="{% url 'event_detail' e.id %}">
-    <b>{{ e.title }}</b>
-    </a> —
-    {{ e.department }} —
-    {{ e.category }} —
-    {{ e.participation_type }} —
-    {{ e.status }} —
-    {{ e|format_event_datetime }}
-    {% if e.status == "verified" %}
-        <span style="
-            background:#28a745;
-            color:white;
-            padding:3px 8px;
-            border-radius:12px;
-            font-size:12px;">
-            Verified
-        </span>
-
-        {% elif e.status == "completed" %}
-            <span style="
-                background:#ffc107;
-                color:black;
-                padding:3px 8px;
-                border-radius:12px;
-                font-size:12px;">
-                Unverified
-        </span>
-    {% endif %}
-
-    <br>
-{% empty %}
-    No events found.
-{% endfor %}
+</section>
+{% endblock %}

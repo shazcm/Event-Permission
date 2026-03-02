@@ -62,7 +62,14 @@ def create_event(request):
     else:
         form = EventForm(user=request.user)
 
-    return render(request, 'events/create_event.html', {'form': form})
+    return render(
+        request,
+        'events/create_event.html',
+        {
+            'form': form,
+            'active_nav': 'faculty-create',
+        }
+    )
 
 @login_required
 def principal_pending_events(request):
@@ -75,7 +82,10 @@ def principal_pending_events(request):
     return render(
         request,
         'events/principal_pending.html',
-        {'events': events}
+        {
+            'events': events,
+            'active_nav': 'principal-pending',
+        }
     )
 
 @login_required
@@ -217,7 +227,8 @@ def post_event_upload(request, event_id):
         event.save()
 
     return render(request, 'events/post_upload.html', {
-        'event': event
+        'event': event,
+        'active_nav': 'faculty-dashboard',
     })
 
 @login_required
@@ -230,7 +241,10 @@ def principal_verify_list(request):
 
     return render(request,
                   'events/principal_verify.html',
-                  {'events': events})
+                  {
+                      'events': events,
+                      'active_nav': 'principal-verify',
+                  })
 
 @login_required
 def principal_verify_event(request, event_id):
@@ -258,6 +272,17 @@ def analytics_dashboard(request):
     approved = Event.objects.filter(status='approved').count()
     completed = Event.objects.filter(status='completed').count()
     verified = Event.objects.filter(status='verified').count()
+    rejected = Event.objects.filter(status='rejected').count()
+
+    status_labels = ['Pending', 'Approved', 'Completed', 'Verified', 'Rejected']
+    status_counts = [pending, approved, completed, verified, rejected]
+
+    category_labels = ['Department', 'NSS', 'NCC', 'Union', 'Other']
+    category_keys = ['department', 'nss', 'ncc', 'union', 'other']
+    category_counts = [
+        Event.objects.filter(category=category_key).count()
+        for category_key in category_keys
+    ]
 
     context = {
         'total': total_events,
@@ -265,6 +290,12 @@ def analytics_dashboard(request):
         'approved': approved,
         'completed': completed,
         'verified': verified,
+        'rejected': rejected,
+        'status_labels': status_labels,
+        'status_counts': status_counts,
+        'category_labels': category_labels,
+        'category_counts': category_counts,
+        'active_nav': 'principal-analytics',
     }
 
     return render(request, 'events/analytics.html', context)
@@ -329,6 +360,7 @@ def view_all_events(request):
         'events': events,
         'departments': departments,
         'show_verified': show_verified,
+        'active_nav': 'principal-all',
     }
 
     return render(request, 
@@ -411,6 +443,7 @@ def faculty_filter_events(request):
         'events': events,
         'page_title': page_title,
         'selected_status': selected_status,
+        'active_nav': 'faculty-filter',
     }
 
     return render(request,
@@ -432,7 +465,8 @@ def principal_approved_events(request):
 
     context = {
         'approved_events': approved_events,
-        'today': today
+        'today': today,
+        'active_nav': 'principal-approved',
     }
 
     return render(
@@ -491,7 +525,11 @@ def change_event_venue(request, event_id):
                 return render(
                     request,
                     'events/change_venue.html',
-                    {'form': form, 'event': event}
+                    {
+                        'form': form,
+                        'event': event,
+                        'active_nav': 'principal-approved',
+                    }
                 )
 
             form.save()
@@ -504,7 +542,11 @@ def change_event_venue(request, event_id):
     return render(
         request,
         'events/change_venue.html',
-        {'form': form, 'event': event}
+        {
+            'form': form,
+            'event': event,
+            'active_nav': 'principal-approved',
+        }
     )
 
 
@@ -556,6 +598,24 @@ def event_detail(request, event_id):
     return render(request,
                   'events/event_detail.html',
                   {'event': event})
+
+
+@login_required
+def principal_rejected_events(request):
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    rejected_events = Event.objects.filter(status='rejected').order_by('-created_at')
+
+    return render(
+        request,
+        'events/principal_rejected.html',
+        {
+            'rejected_events': rejected_events,
+            'active_nav': 'principal-rejected',
+        }
+    )
 
 
 

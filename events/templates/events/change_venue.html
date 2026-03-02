@@ -1,20 +1,20 @@
-{% load event_extras %}
-<h2>Change Venue</h2>
+{% extends "base.html" %}
 
-{% if messages %}
-    {% for message in messages %}
-        <div style="color:red; margin:10px 0;">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
-<p>
-    Event: <b>{{ event.title }}</b><br>
-    Current Venue: {{ event.venue }}
-</p>
+{% block title %}Change Venue{% endblock %}
+{% block page_title %}Change Venue{% endblock %}
+{% block page_subtitle %}Update event venue while keeping date-range conflict rules enforced.{% endblock %}
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Update Venue</button>
-</form>
+{% block content %}
+<section class="panel" style="max-width: 620px;">
+    <p>
+        <strong>Event:</strong> {{ event.title }}<br>
+        <strong>Current Venue:</strong> {{ event.venue }}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn" type="submit">Update Venue</button>
+    </form>
+</section>
+{% endblock %}

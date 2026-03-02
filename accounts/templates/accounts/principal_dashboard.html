@@ -1,19 +1,180 @@
-<h2>Principal Dashboard</h2>
-<p>Welcome {{ request.user.username }}</p>
-<a href="/events/principal/pending/">
-    <button>View Pending Events</button>
-</a>
+{% extends "base.html" %}
 
-<a href="/events/principal/approved/">
-    <button>View Approved Events</button>
-</a>
+{% block title %}Principal Dashboard{% endblock %}
+{% block page_title %}Events Management Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, {{ request.user.get_full_name|default:request.user.username }}. Here is an overview of all college events.{% endblock %}
 
-<a href="/events/principal/verify/">
-    <button>Verify Completed Events</button>
-</a>
-<a href="/events/principal/analytics/">
-    <button>View Analytics</button>
-</a>
-<a href="{% url 'view_all_events' %}">
-    <button>View Conducted Events</button>
-</a>
+{% block content %}
+<div class="card-grid">
+    <article class="panel">
+        <div class="card-title">
+            Pending Approvals <span class="chip pending"><i class="fa-regular fa-clock"></i></span>
+        </div>
+        <p class="card-value">{{ pending_count }}</p>
+        <a class="card-link" href="{% url 'principal_pending_events' %}">Click to view details</a>
+    </article>
+
+    <article class="panel">
+        <div class="card-title">
+            Approved Events <span class="chip approved"><i class="fa-regular fa-circle-check"></i></span>
+        </div>
+        <p class="card-value">{{ approved_count }}</p>
+        <a class="card-link" href="{% url 'principal_approved_events' %}">Click to view details</a>
+    </article>
+
+    <article class="panel">
+        <div class="card-title">
+            Rejected Events <span class="chip rejected"><i class="fa-regular fa-circle-xmark"></i></span>
+        </div>
+        <p class="card-value">{{ rejected_count }}</p>
+        <a class="card-link" href="{% url 'principal_rejected_events' %}">Click to view details</a>
+    </article>
+
+    <article class="panel">
+        <div class="card-title">
+            Total Events <span class="chip pending"><i class="fa-regular fa-calendar"></i></span>
+        </div>
+        <p class="card-value">{{ total_events }}</p>
+        <a class="card-link" href="{% url 'view_all_events' %}">Click to view details</a>
+    </article>
+</div>
+
+<div class="two-col">
+    <section class="panel">
+        <h3 style="margin-top: 0;"><i class="fa-regular fa-clock"></i> Recent Pending Approvals</h3>
+        <div class="stack">
+            {% for e in recent_pending %}
+                <article class="item">
+                    <div style="display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;">
+                        <div>
+                            <h4 style="margin: 0 0 6px 0;">{{ e.title }}</h4>
+                            <div class="muted">{{ e.department|default:"General" }}</div>
+                            <div class="muted" style="margin-top: 7px; font-size: 13px;">
+                                <i class="fa-regular fa-calendar"></i> {{ e.start_date|date:"d/m/Y" }}
+                                &nbsp;&nbsp;
+                                <i class="fa-solid fa-indian-rupee-sign"></i> {{ e.budget }}
+                            </div>
+                        </div>
+                        <span class="chip pending">Pending</span>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="muted">No pending approvals at the moment.</p>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 12px;">
+            <a class="card-link" href="{% url 'principal_pending_events' %}">View All Pending Approvals →</a>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h3 style="margin-top: 0;"><i class="fa-regular fa-calendar"></i> Event Calendar</h3>
+        <div class="calendar">
+            <div class="calendar-head">
+                <button type="button" id="calendarPrev"><i class="fa-solid fa-chevron-left"></i></button>
+                <strong id="calendarTitle">Month</strong>
+                <button type="button" id="calendarNext"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <div class="calendar-weekdays">
+                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="calendar-days" id="calendarDays"></div>
+        </div>
+    </section>
+</div>
+
+{{ calendar_events|json_script:"calendar-events" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function parseData(id) {
+        const node = document.getElementById(id);
+        if (!node) return [];
+        return JSON.parse(node.textContent);
+    }
+
+    const calendarEvents = parseData("calendar-events");
+
+    (function renderCalendar() {
+        const daysNode = document.getElementById("calendarDays");
+        const titleNode = document.getElementById("calendarTitle");
+        const prevBtn = document.getElementById("calendarPrev");
+        const nextBtn = document.getElementById("calendarNext");
+
+        if (!daysNode || !titleNode || !prevBtn || !nextBtn) return;
+
+        const monthMap = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const eventByDate = {};
+        const keyOf = function (date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return y + "-" + m + "-" + d;
+        };
+
+        calendarEvents.forEach(function (event) {
+            const start = new Date(event.start + "T00:00:00");
+            const end = new Date(event.end + "T00:00:00");
+            let cursor = new Date(start);
+
+            while (cursor <= end) {
+                const key = keyOf(cursor);
+                if (!eventByDate[key]) eventByDate[key] = [];
+                eventByDate[key].push(event);
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        });
+
+        let view = new Date();
+        view = new Date(view.getFullYear(), view.getMonth(), 1);
+
+        function build() {
+            const year = view.getFullYear();
+            const month = view.getMonth();
+            titleNode.textContent = monthMap[month] + " " + year;
+
+            daysNode.innerHTML = "";
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevMonthDays = new Date(year, month, 0).getDate();
+
+            for (let i = firstDay - 1; i >= 0; i -= 1) {
+                const day = prevMonthDays - i;
+                const cell = document.createElement("div");
+                cell.className = "calendar-day muted-day";
+                cell.innerHTML = '<div class="calendar-day-number">' + day + "</div>";
+                daysNode.appendChild(cell);
+            }
+
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const dateKey = keyOf(new Date(year, month, day));
+                const events = eventByDate[dateKey] || [];
+                const cell = document.createElement("div");
+                cell.className = "calendar-day";
+
+                let dots = "";
+                events.slice(0, 3).forEach(function (event) {
+                    dots += '<div class="calendar-dot ' + event.status + '" title="' + event.title + " (" + event.department + ')"></div>';
+                });
+                if (events.length > 3) dots += '<div class="muted" style="font-size:10px;">+' + (events.length - 3) + "</div>";
+
+                cell.innerHTML = '<div class="calendar-day-number">' + day + "</div>" + dots;
+                daysNode.appendChild(cell);
+            }
+        }
+
+        prevBtn.addEventListener("click", function () {
+            view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+            build();
+        });
+
+        nextBtn.addEventListener("click", function () {
+            view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+            build();
+        });
+
+        build();
+    })();
+</script>
+{% endblock %}

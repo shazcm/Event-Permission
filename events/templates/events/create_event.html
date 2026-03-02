@@ -1,28 +1,35 @@
-<h2>Create Event</h2>
+{% extends "base.html" %}
 
-<!-- Django Messages -->
-{% if messages %}
-    {% for message in messages %}
-        <div style="padding:10px; margin:10px 0;
-                    background:#e7f3fe; color:#084298;">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
+{% block title %}Create Event{% endblock %}
+{% block page_title %}Create Event Proposal{% endblock %}
+{% block page_subtitle %}Submit a new event request for principal approval.{% endblock %}
 
-<!-- Conflict Warning Box -->
-<div id="conflict-warning"
-     style="display:none; padding:10px; margin:10px 0;
-            background:#f8d7da; color:#842029; border-radius:5px;">
-</div>
+{% block content %}
+<div id="conflict-warning" class="message error" style="display:none;"></div>
 
-<form method="post" id="event-form">
-    {% csrf_token %}
-    {{ form.as_p }}
+<section class="panel" style="max-width: 900px;">
+    <form method="post" id="event-form">
+        {% csrf_token %}
+        {{ form.as_p }}
 
-    <button type="submit">Submit Event Proposal</button>
-</form>
+        <button class="btn" type="submit">Submit Event Proposal</button>
+    </form>
+</section>
+{% endblock %}
 
+{% block extra_css %}
+<style>
+    #event-form p {
+        margin: 0 0 10px;
+    }
+
+    #event-form label {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
 
@@ -52,13 +59,13 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (data.status === "approved") {
                         warningBox.style.display = "block";
                         warningBox.innerHTML =
-                            "⚠ Warning: An APPROVED event already exists at this venue during this date range.";
+                            "Warning: An approved event already exists at this venue during this date range.";
                     }
 
                     else if (data.status === "pending") {
                         warningBox.style.display = "block";
                         warningBox.innerHTML =
-                            "⚠ Warning: A PENDING request already exists at this venue during this date range.";
+                            "Warning: A pending request already exists at this venue during this date range.";
                     }
 
                     else {
@@ -100,7 +107,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     startDateField.addEventListener("change", function() {
 
-        // If end date is empty OR earlier than start date
         if (!endDateField.value || endDateField.value < startDateField.value) {
             endDateField.value = startDateField.value;
         }
@@ -109,3 +115,4 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 </script>
+{% endblock %}

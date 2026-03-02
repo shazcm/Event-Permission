@@ -1,38 +1,27 @@
-<h2>Post Event Upload — {{ event.title }}</h2>
-{% if messages %}
-    {% for message in messages %}
-        <p style="color:red;">{{ message }}</p>
-    {% endfor %}
-{% endif %}
+{% extends "base.html" %}
 
+{% block title %}Post Event Upload{% endblock %}
+{% block page_title %}Post Event Upload{% endblock %}
+{% block page_subtitle %}{{ event.title }}{% endblock %}
 
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
+{% block content %}
+<section class="panel" style="max-width: 860px;">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
 
-    <label>Attendance File:</label>
-    <input type="file" name="attendance_file">
-    <br><br>
+        <label for="attendance_file">Attendance File</label>
+        <input id="attendance_file" type="file" name="attendance_file">
 
-    <label>Upload Photos (Max 5):</label>
-    <input type="file" name="images" multiple>
-    <br><br>
+        <label for="images">Upload Photos (Max 5)</label>
+        <input id="images" type="file" name="images" multiple>
 
-    <button type="submit" name="generate_report">
-        Generate Report
-    </button>
+        <button class="btn" type="submit" name="generate_report">Generate Report</button>
 
-    {% if event.report_text %}
-        <br><br>
-        <h3>Generated Report</h3>
-
-        <textarea name="report_text" rows="12" style="width: 100%;">
-{{ event.report_text }}
-        </textarea>
-
-        <br><br>
-        <button type="submit" name="submit_report">
-            Submit Final Report
-        </button>
-    {% endif %}
-
-</form>
+        {% if event.report_text %}
+            <h3>Generated Report</h3>
+            <textarea name="report_text" rows="12">{{ event.report_text }}</textarea>
+            <button class="btn" type="submit" name="submit_report">Submit Final Report</button>
+        {% endif %}
+    </form>
+</section>
+{% endblock %}

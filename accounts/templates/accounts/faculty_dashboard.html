@@ -1,26 +1,72 @@
-<h2>Faculty Dashboard</h2>
-<p>Welcome {{ request.user.username }}</p>
-<a href="/events/create/">
-    <button>Create Event</button>
-</a>
-<a href="/events/faculty/filter/">
-    <button>{{ button_label }}</button>
-</a>
-<h3>Your Events</h3>
+{% extends "base.html" %}
 {% load event_extras %}
-{% for e in my_events %}
-    <b>{{ e.title }}</b> —
-    {{ e.status }} —
-    {{ e.participation_type }} —
-    {{ e|format_event_datetime }}
 
-    {% if e.status == 'approved' %}
-        <a href="/events/post-upload/{{ e.id }}/">
-            <button>Upload Post-Event</button>
-        </a>
-    {% endif %}
+{% block title %}Faculty Dashboard{% endblock %}
+{% block page_title %}Faculty Event Workspace{% endblock %}
+{% block page_subtitle %}Welcome {{ request.user.get_full_name|default:request.user.username }}. Track your proposals and post-event submissions here.{% endblock %}
 
-    <br><br>
-{% empty %}
-    You have not created any events.
-{% endfor %}
+{% block content %}
+<div class="card-grid">
+    <article class="panel">
+        <div class="card-title">Total Events</div>
+        <p class="card-value">{{ my_event_count }}</p>
+    </article>
+    <article class="panel">
+        <div class="card-title">Pending</div>
+        <p class="card-value">{{ pending_count }}</p>
+    </article>
+    <article class="panel">
+        <div class="card-title">Approved</div>
+        <p class="card-value">{{ approved_count }}</p>
+    </article>
+    <article class="panel">
+        <div class="card-title">Verified</div>
+        <p class="card-value">{{ verified_count }}</p>
+    </article>
+</div>
+
+<div class="panel" style="margin-bottom: 18px; display: flex; gap: 10px; flex-wrap: wrap;">
+    <a class="btn" href="{% url 'create_event' %}">Create Event</a>
+    <a class="btn secondary" href="{% url 'faculty_filter_events' %}">{{ button_label }}</a>
+</div>
+
+<section class="panel">
+    <h3 style="margin-top: 0;">Your Events</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Participation</th>
+                    <th>Date & Time</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in my_events %}
+                    <tr>
+                        <td><a href="{% url 'event_detail' e.id %}"><strong>{{ e.title }}</strong></a></td>
+                        <td>
+                            <span class="chip {{ e.status }}">{{ e.status|title }}</span>
+                        </td>
+                        <td>{{ e.participation_type|title }}</td>
+                        <td>{{ e|format_event_datetime }}</td>
+                        <td>
+                            {% if e.status == 'approved' %}
+                                <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
+                            {% else %}
+                                <span class="muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="muted">You have not created any events.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

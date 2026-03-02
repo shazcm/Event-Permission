@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
 def login_view(request):
     if request.method == "POST":
@@ -25,8 +26,6 @@ def login_view(request):
             messages.error(request, "Invalid username or password")
 
     return render(request, 'accounts/login.html')
-
-from django.contrib.auth.decorators import login_required
 
 from events.models import Event
 
@@ -58,11 +57,18 @@ def faculty_dashboard(request):
         button_label = "View All Events"
 
     # Only events created by this user
-    my_events = Event.objects.filter(created_by=user)
+    my_events = Event.objects.filter(created_by=user).order_by('-created_at')
 
     context = {
         'my_events': my_events,
         'button_label': button_label,
+        'my_event_count': my_events.count(),
+        'pending_count': my_events.filter(status='pending').count(),
+        'approved_count': my_events.filter(status='approved').count(),
+        'completed_count': my_events.filter(status='completed').count(),
+        'verified_count': my_events.filter(status='verified').count(),
+        'rejected_count': my_events.filter(status='rejected').count(),
+        'active_nav': 'faculty-dashboard',
     }
 
     return render(request,
@@ -72,8 +78,42 @@ def faculty_dashboard(request):
 
 @login_required
 def principal_dashboard(request):
-    return render(request, 'accounts/principal_dashboard.html')
 
-def home(request):
-    return render(request, 'accounts/home.html')
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    total_events = Event.objects.count()
+    pending_events = Event.objects.filter(status='pending')
+    approved_events = Event.objects.filter(status='approved')
+    rejected_events = Event.objects.filter(status='rejected')
+
+    recent_pending = pending_events.order_by('-created_at')[:3]
+
+    calendar_events = []
+    for event in Event.objects.select_related('department').order_by('start_date'):
+        calendar_events.append({
+            'title': event.title,
+            'status': event.status,
+            'start': event.start_date.isoformat(),
+            'end': event.end_date.isoformat(),
+            'department': event.department.name if event.department else 'General',
+        })
+
+    context = {
+        'total_events': total_events,
+        'pending_count': pending_events.count(),
+        'approved_count': approved_events.count(),
+        'rejected_count': rejected_events.count(),
+        'recent_pending': recent_pending,
+        'calendar_events': calendar_events,
+        'active_nav': 'principal-dashboard',
+    }
+
+    return render(request, 'accounts/principal_dashboard.html', context)
+
+
+@login_required
+def logout_view(request):
+    logout(request)
+    return redirect('login')
     

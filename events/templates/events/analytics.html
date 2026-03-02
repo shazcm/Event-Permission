@@ -1,7 +1,72 @@
-<h2>Analytics Dashboard</h2>
+{% extends "base.html" %}
 
-<p>Total Events: {{ total }}</p>
-<p>Pending: {{ pending }}</p>
-<p>Approved: {{ approved }}</p>
-<p>Completed: {{ completed }}</p>
-<p>Verified: {{ verified }}</p>
+{% block title %}Analytics Dashboard{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+{% block page_subtitle %}Live status and category distribution across all events.{% endblock %}
+
+{% block content %}
+<div class="card-grid">
+    <article class="panel"><div class="card-title">Total Events</div><p class="card-value">{{ total }}</p></article>
+    <article class="panel"><div class="card-title">Pending</div><p class="card-value">{{ pending }}</p></article>
+    <article class="panel"><div class="card-title">Approved</div><p class="card-value">{{ approved }}</p></article>
+    <article class="panel"><div class="card-title">Verified</div><p class="card-value">{{ verified }}</p></article>
+</div>
+
+<div class="two-col">
+    <section class="panel">
+        <h3 style="margin-top:0;">Status Distribution</h3>
+        <canvas id="statusChart" height="160"></canvas>
+    </section>
+    <section class="panel">
+        <h3 style="margin-top:0;">Category Distribution</h3>
+        <canvas id="categoryChart" height="160"></canvas>
+    </section>
+</div>
+
+{{ status_labels|json_script:"status-labels" }}
+{{ status_counts|json_script:"status-counts" }}
+{{ category_labels|json_script:"analytics-category-labels" }}
+{{ category_counts|json_script:"analytics-category-counts" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    function parseData(id) {
+        return JSON.parse(document.getElementById(id).textContent);
+    }
+
+    const statusLabels = parseData("status-labels");
+    const statusCounts = parseData("status-counts");
+    const categoryLabels = parseData("analytics-category-labels");
+    const categoryCounts = parseData("analytics-category-counts");
+
+    new Chart(document.getElementById("statusChart"), {
+        type: "bar",
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusCounts,
+                backgroundColor: ["#f0a75f", "#63c3a4", "#f4cc62", "#5fb57d", "#dc6370"],
+                borderRadius: 8
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    new Chart(document.getElementById("categoryChart"), {
+        type: "pie",
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                data: categoryCounts,
+                backgroundColor: ["#0f9b72", "#e18904", "#0b93bb", "#d13f4b", "#747f8b"]
+            }]
+        },
+        options: { plugins: { legend: { position: "bottom" } } }
+    });
+</script>
+{% endblock %}

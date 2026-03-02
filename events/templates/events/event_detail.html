@@ -1,95 +1,85 @@
-<link href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" rel="stylesheet">
+{% extends "base.html" %}
 {% load event_extras %}
-<h2>Event Details</h2>
 
-<hr>
-<h3>{{ event.title }}</h3>
-<p><strong>Organized By:</strong> {{ event.created_by.username }}</p>
-<p><strong>Chief Guest:</strong> {{ event.chief_guest }}</p>
-<p><strong>Department:</strong> {{ event.department }}</p>
-<p><strong>Category:</strong> {{ event.category }}</p>
-<p><strong>Participation:</strong> {{ event.participation_type }}</p>
-<p><strong>Budget:</strong> ₹{{ event.budget }}</p>
-<p><strong>Venue:</strong> {{ event.venue }}</p>
-<p><strong>Date & Time:</strong>{{ event|format_event_datetime }}
-<p><strong>Status:</strong> {{ event.status }}</p>
-<hr>
-<h4>Description</h4>
-<p>{{ event.description }}</p>
+{% block title %}Event Details{% endblock %}
+{% block page_title %}Event Details{% endblock %}
+{% block page_subtitle %}Detailed event profile, report assets, and verification actions.{% endblock %}
 
-{% if event.report_text %}
-<hr>
-<h4>Post Event Report</h4>
-<p>{{ event.report_text }}</p>
-{% endif %}
-<hr>
-<h4>Event Attendance</h4>
-{% if event.attendance_file %}
-        <a href="{{ event.attendance_file.url }}">Attendance File</a><br>
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="event-card" style="margin-bottom:14px;">
+    <div class="event-head">
+        <h2 class="event-title" style="font-size:1.3rem;">{{ event.title }}</h2>
+        <span class="chip {{ event.status }}">{{ event.status|title }}</span>
+    </div>
+    <p class="event-desc" style="margin-bottom: 10px;">{{ event.description }}</p>
+
+    <div class="meta-grid">
+        <div class="meta-row"><i class="fa-regular fa-user"></i><span class="meta-label">Organizer:</span><span class="meta-value">{{ event.created_by.get_full_name|default:event.created_by.username }}</span></div>
+        <div class="meta-row"><i class="fa-regular fa-star"></i><span class="meta-label">Chief Guest:</span><span class="meta-value">{{ event.chief_guest|default:"-" }}</span></div>
+        <div class="meta-row"><i class="fa-regular fa-building"></i><span class="meta-label">Department:</span><span class="meta-value">{{ event.department|default:"General" }}</span></div>
+        <div class="meta-row"><i class="fa-regular fa-rectangle-list"></i><span class="meta-label">Type:</span><span class="meta-value">{{ event.category|title }}</span></div>
+        <div class="meta-row"><i class="fa-regular fa-calendar"></i><span class="meta-label">Date:</span><span class="meta-value">{{ event.start_date|date:"d/m/Y" }} - {{ event.end_date|date:"d/m/Y" }}</span></div>
+        <div class="meta-row"><i class="fa-regular fa-clock"></i><span class="meta-label">Time:</span><span class="meta-value">{{ event.start_time|time:"h:i A"|default:"-" }} - {{ event.end_time|time:"h:i A"|default:"-" }}</span></div>
+        <div class="meta-row"><i class="fa-solid fa-location-dot"></i><span class="meta-label">Venue:</span><span class="meta-value">{{ event.venue }}</span></div>
+        <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ event.participation_type|title }}</span></div>
+        <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ event.budget }}</span></div>
+    </div>
+
+    {% if event.status == "rejected" and event.principal_remark %}
+        <div class="reason-box">Rejection Reason: {{ event.principal_remark }}</div>
+    {% endif %}
+</section>
+
+<section class="panel" style="margin-bottom:14px;">
+    {% if event.report_text %}
+        <h3 style="margin-top:0;">Post Event Report</h3>
+        <p style="white-space: pre-line;">{{ event.report_text }}</p>
     {% endif %}
 
-<hr>
-<h4>Event Photos</h4>
+    <h3>Event Attendance</h3>
+    {% if event.attendance_file %}
+        <a class="btn secondary" href="{{ event.attendance_file.url }}">Open Attendance File</a>
+    {% else %}
+        <p class="muted">No attendance file uploaded.</p>
+    {% endif %}
+</section>
 
-<div style="display:flex; flex-wrap:wrap; gap:15px;">
+<section class="panel" style="margin-bottom:14px;">
+    <h3 style="margin-top:0;">Event Photos</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+        {% for photo in event.photos.all %}
+            <a class="glightbox" href="{{ photo.image.url }}" data-gallery="event-gallery" data-title="{{ event.title }}">
+                <img src="{{ photo.image.url }}" alt="{{ event.title }} photo" style="width:100%;height:160px;object-fit:cover;border-radius:12px;border:1px solid var(--line);">
+            </a>
+        {% empty %}
+            <p class="muted">No photos uploaded.</p>
+        {% endfor %}
+    </div>
+</section>
 
-{% for photo in event.photos.all %}
-    <a href="{{ photo.image.url }}"
-       data-lightbox="event-gallery"
-       data-title="{{ event.title }}">
+<section class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <a class="btn secondary" href="{% url 'download_detailed_report' event.id %}">Download Detailed Report</a>
 
-        <img src="{{ photo.image.url }}"
-             style="
-                width:200px;
-                height:150px;
-                object-fit:cover;
-                border-radius:8px;
-                cursor:pointer;
-                box-shadow:0 2px 6px rgba(0,0,0,0.2);
-             ">
-    </a>
-{% empty %}
-    <p>No photos uploaded.</p>
-{% endfor %}
+    {% if request.user.role == "principal" and event.status == "completed" %}
+        <form method="post" action="{% url 'principal_verify_event' event.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn">Verify Event</button>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}
 
-</div>
-
-<br><br>
-
-<a href="{% url 'download_detailed_report' event.id %}" style="
-    background: #1f4e79;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 6px;
-    text-decoration: none;
-    display: inline-block;
-">
-    Download Detailed Report
-</a>
-
-{% if request.user.role == "principal" and event.status == "completed" %}
-
-    <hr>
-
-    <form method="post" action="{% url 'principal_verify_event' event.id %}">
-        {% csrf_token %}
-        <button type="submit" style="
-            background:#28a745;
-            color:white;
-            padding:8px 15px;
-            border:none;
-            border-radius:5px;
-            cursor:pointer;">
-            Verify Event
-        </button>
-    </form>
-
-{% endif %}
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 <script>
-    const lightbox = GLightbox({
-        selector: 'data-lightbox',
+    GLightbox({
+        selector: ".glightbox",
         touchNavigation: true,
         loop: true,
     });
 </script>
+{% endblock %}

@@ -1,26 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-</head>
-<body>
-    <h2>College Event System Login</h2>
+{% extends "base.html" %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p style="color:red;">{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% block title %}College Event System{% endblock %}
+{% block page_title %}College Event System{% endblock %}
+{% block page_subtitle %}Sign in to continue to your dashboard.{% endblock %}
 
+{% block content %}
+<section class="panel" style="max-width: 420px; margin: 0 auto;">
+    <h3 style="margin: 0 0 6px;">Login</h3>
+    <p class="muted" style="margin: 0 0 10px;">Use your role-based credentials.</p>
     <form method="post">
         {% csrf_token %}
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br><br>
+        <label for="username">Username</label>
+        <input id="username" type="text" name="username" autocomplete="username" required>
 
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" autocomplete="current-password" required>
 
-        <button type="submit">Login</button>
+        <button class="btn" type="submit" style="width: 100%; margin-top: 2px;">Login</button>
     </form>
-</body>
-</html>
+</section>
+{% endblock %}
