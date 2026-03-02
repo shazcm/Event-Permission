@@ -1,19 +1,17 @@
-<h2>Principal Dashboard</h2>
-<p>Welcome {{ request.user.username }}</p>
-<a href="/events/principal/pending/">
-    <button>View Pending Events</button>
-</a>
-
-<a href="/events/principal/approved/">
-    <button>View Approved Events</button>
-</a>
-
-<a href="/events/principal/verify/">
-    <button>Verify Completed Events</button>
-</a>
-<a href="/events/principal/analytics/">
-    <button>View Analytics</button>
-</a>
-<a href="{% url 'view_all_events' %}">
-    <button>View Conducted Events</button>
-</a>
+{% extends 'base.html' %}
+{% block title %}Principal Dashboard{% endblock %}
+{% block content %}
+<div class="stack">
+    <div class="card">
+        <h2>Principal Dashboard</h2>
+        <p class="muted">Welcome {{ request.user.username }}. Manage approvals, verifications, and analytics.</p>
+    </div>
+    <div class="card grid-2">
+        <a class="btn" href="/events/principal/pending/">View Pending Events</a>
+        <a class="btn" href="/events/principal/approved/">View Approved Events</a>
+        <a class="btn" href="/events/principal/verify/">Verify Completed Events</a>
+        <a class="btn" href="/events/principal/analytics/">View Analytics</a>
+        <a class="btn" href="{% url 'view_all_events' %}">View Conducted Events</a>
+    </div>
+</div>
+{% endblock %}

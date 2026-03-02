@@ -1,20 +1,18 @@
-{% load event_extras %}
-<h2>Change Venue</h2>
-
-{% if messages %}
-    {% for message in messages %}
-        <div style="color:red; margin:10px 0;">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
-<p>
-    Event: <b>{{ event.title }}</b><br>
-    Current Venue: {{ event.venue }}
-</p>
-
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Update Venue</button>
-</form>
+{% extends 'base.html' %}
+{% block title %}Change Venue{% endblock %}
+{% block content %}
+<div class="card" style="max-width:700px;">
+    <h2>Change Venue</h2>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message error">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    <p><b>Event:</b> {{ event.title }}<br><b>Current Venue:</b> {{ event.venue }}</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn" type="submit">Update Venue</button>
+    </form>
+</div>
+{% endblock %}

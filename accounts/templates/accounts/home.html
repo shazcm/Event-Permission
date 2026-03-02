@@ -1,17 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>College Event System</title>
-</head>
-<body>
-    <h1>College Event Approval, Verification & Analytics System</h1>
-
-    <p>
-        A web-based system to manage college events, approvals, and reporting.
-    </p>
-
-    <a href="{% url 'login' %}">
-        <button>Login</button>
-    </a>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Home | College Event System{% endblock %}
+{% block content %}
+<div class="card stack">
+    <h1>College Event Approval, Verification & Analytics</h1>
+    <p class="muted">A centralized portal to propose, approve, track, and report campus events.</p>
+    <div class="inline">
+        <a class="btn" href="{% url 'login' %}">Get Started</a>
+    </div>
+</div>
+{% endblock %}

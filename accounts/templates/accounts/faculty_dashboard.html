@@ -1,26 +1,43 @@
-<h2>Faculty Dashboard</h2>
-<p>Welcome {{ request.user.username }}</p>
-<a href="/events/create/">
-    <button>Create Event</button>
-</a>
-<a href="/events/faculty/filter/">
-    <button>{{ button_label }}</button>
-</a>
-<h3>Your Events</h3>
+{% extends 'base.html' %}
 {% load event_extras %}
-{% for e in my_events %}
-    <b>{{ e.title }}</b> —
-    {{ e.status }} —
-    {{ e.participation_type }} —
-    {{ e|format_event_datetime }}
+{% block title %}Faculty Dashboard{% endblock %}
+{% block content %}
+<div class="stack">
+    <div class="card">
+        <h2>Faculty Dashboard</h2>
+        <p class="muted">Welcome {{ request.user.username }}. Create events and submit post-event records.</p>
+        <div class="inline">
+            <a class="btn" href="/events/create/">Create Event</a>
+            <a class="btn btn-secondary" href="/events/faculty/filter/">{{ button_label }}</a>
+        </div>
+    </div>
 
-    {% if e.status == 'approved' %}
-        <a href="/events/post-upload/{{ e.id }}/">
-            <button>Upload Post-Event</button>
-        </a>
-    {% endif %}
-
-    <br><br>
-{% empty %}
-    You have not created any events.
-{% endfor %}
+    <div class="card">
+        <h3>Your Events</h3>
+        <table>
+            <thead>
+                <tr><th>Title</th><th>Status</th><th>Participation</th><th>Date</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+            {% for e in my_events %}
+                <tr>
+                    <td>{{ e.title }}</td>
+                    <td>{{ e.status }}</td>
+                    <td>{{ e.participation_type }}</td>
+                    <td>{{ e|format_event_datetime }}</td>
+                    <td>
+                        {% if e.status == 'approved' %}
+                            <a class="btn btn-success" href="/events/post-upload/{{ e.id }}/">Upload Post-Event</a>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">You have not created any events.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

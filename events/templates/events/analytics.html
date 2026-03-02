@@ -1,7 +1,14 @@
-<h2>Analytics Dashboard</h2>
-
-<p>Total Events: {{ total }}</p>
-<p>Pending: {{ pending }}</p>
-<p>Approved: {{ approved }}</p>
-<p>Completed: {{ completed }}</p>
-<p>Verified: {{ verified }}</p>
+{% extends 'base.html' %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Analytics Dashboard</h2>
+    <div class="grid-2">
+        <div class="card"><h3>{{ total }}</h3><p class="muted">Total Events</p></div>
+        <div class="card"><h3>{{ pending }}</h3><p class="muted">Pending</p></div>
+        <div class="card"><h3>{{ approved }}</h3><p class="muted">Approved</p></div>
+        <div class="card"><h3>{{ completed }}</h3><p class="muted">Completed</p></div>
+        <div class="card"><h3>{{ verified }}</h3><p class="muted">Verified</p></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,72 +1,55 @@
-<h2>Create Event</h2>
+{% extends 'base.html' %}
+{% block title %}Create Event{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px;">
+    <h2>Create Event</h2>
 
-<!-- Django Messages -->
-{% if messages %}
-    {% for message in messages %}
-        <div style="padding:10px; margin:10px 0;
-                    background:#e7f3fe; color:#084298;">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message success">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 
-<!-- Conflict Warning Box -->
-<div id="conflict-warning"
-     style="display:none; padding:10px; margin:10px 0;
-            background:#f8d7da; color:#842029; border-radius:5px;">
+    <div id="conflict-warning" class="message error" style="display:none;"></div>
+
+    <form method="post" id="event-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn" type="submit">Submit Event Proposal</button>
+    </form>
 </div>
-
-<form method="post" id="event-form">
-    {% csrf_token %}
-    {{ form.as_p }}
-
-    <button type="submit">Submit Event Proposal</button>
-</form>
-
+{% endblock %}
+{% block extra_js %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-
     const venueField = document.getElementById("id_venue");
     const startDateField = document.getElementById("id_start_date");
     const endDateField = document.getElementById("id_end_date");
-
     const form = document.getElementById("event-form");
     const warningBox = document.getElementById("conflict-warning");
-
     let conflictStatus = "clear";
 
     function checkConflict() {
-
         const venue = venueField.value;
         const startDate = startDateField.value;
         const endDate = endDateField.value;
 
         if (venue && startDate && endDate) {
-
             fetch(`/events/check-conflict/?venue=${venue}&start_date=${startDate}&end_date=${endDate}`)
                 .then(response => response.json())
                 .then(data => {
-
                     conflictStatus = data.status;
-
                     if (data.status === "approved") {
                         warningBox.style.display = "block";
-                        warningBox.innerHTML =
-                            "⚠ Warning: An APPROVED event already exists at this venue during this date range.";
-                    }
-
-                    else if (data.status === "pending") {
+                        warningBox.innerHTML = "⚠ Warning: An APPROVED event already exists at this venue during this date range.";
+                    } else if (data.status === "pending") {
                         warningBox.style.display = "block";
-                        warningBox.innerHTML =
-                            "⚠ Warning: A PENDING request already exists at this venue during this date range.";
-                    }
-
-                    else {
+                        warningBox.innerHTML = "⚠ Warning: A PENDING request already exists at this venue during this date range.";
+                    } else {
                         warningBox.style.display = "none";
                         warningBox.innerHTML = "";
                         conflictStatus = "clear";
                     }
-
                 });
         }
     }
@@ -75,37 +58,18 @@ document.addEventListener("DOMContentLoaded", function() {
     startDateField.addEventListener("change", checkConflict);
     endDateField.addEventListener("change", checkConflict);
 
-    form.addEventListener("submit", function(e) {
-
-        if (conflictStatus === "approved" || conflictStatus === "pending") {
-
-            const proceed = confirm(
-                "There is a venue conflict warning. Do you still want to proceed?"
-            );
-
-            if (!proceed) {
-                e.preventDefault();
-            }
-        }
-
-    });
-
-});
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-
-    const startDateField = document.getElementById("id_start_date");
-    const endDateField = document.getElementById("id_end_date");
-
     startDateField.addEventListener("change", function() {
-
-        // If end date is empty OR earlier than start date
         if (!endDateField.value || endDateField.value < startDateField.value) {
             endDateField.value = startDateField.value;
         }
-
     });
 
+    form.addEventListener("submit", function(e) {
+        if (conflictStatus === "approved" || conflictStatus === "pending") {
+            const proceed = confirm("There is a venue conflict warning. Do you still want to proceed?");
+            if (!proceed) e.preventDefault();
+        }
+    });
 });
 </script>
+{% endblock %}

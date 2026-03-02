@@ -1,41 +1,38 @@
+{% extends 'base.html' %}
 {% load event_extras %}
-<h2>Pending Event Proposals</h2>
-{% if messages %}
-    {% for message in messages %}
-        <p style="color:red;">
-            {{ message }}
-        </p>
+{% block title %}Pending Events{% endblock %}
+{% block content %}
+<div class="card stack">
+    <h2>Pending Event Proposals</h2>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message error">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% for e in events %}
+        <div class="card">
+            <h3>{{ e.title }}</h3>
+            <p class="muted">Organized By: {{ e.created_by.username }}</p>
+            <p>Chief Guest: {{ e.chief_guest }} | Category: {{ e.category }} | Department: {{ e.department }}</p>
+            <p>Date & Time: {{ e|format_event_datetime }} | Venue: {{ e.venue }}</p>
+            <p>Participation: {{ e.participation_type }} | Budget: {{ e.budget }}</p>
+            <p>{{ e.description }}</p>
+
+            <div class="inline">
+                <form method="post" action="/events/principal/action/{{ e.id }}/approve/">
+                    {% csrf_token %}
+                    <button class="btn btn-success" type="submit">Approve</button>
+                </form>
+                <form method="post" action="/events/principal/action/{{ e.id }}/reject/" class="inline">
+                    {% csrf_token %}
+                    <input type="text" name="remark" placeholder="Rejection remark" required style="width: 260px; margin:0;">
+                    <button class="btn btn-danger" type="submit">Reject</button>
+                </form>
+            </div>
+        </div>
+    {% empty %}
+        <p>No pending events.</p>
     {% endfor %}
-{% endif %}
-{% for e in events %}
-    <hr>
-    <b>{{ e.title }}</b><br>
-    Organized By: {{ e.created_by.username }}<br>
-    Chief Guest: {{ e.chief_guest }}<br>
-    Category: {{ e.category }}<br>
-    Department: {{ e.department }}<br>
-    Date & Time :{{ e|format_event_datetime }}<br>
-    Venue: {{ e.venue }}<br>
-    Participation: {{ e.participation_type }}<br>
-    Budget: {{ e.budget }}<br>
-    Description: {{ e.description }}<br>
-
-    <!-- Approve -->
-    <form method="post"
-          action="/events/principal/action/{{ e.id }}/approve/">
-        {% csrf_token %}
-        <button type="submit">Approve</button>
-    </form>
-
-    <!-- Reject -->
-    <form method="post"
-          action="/events/principal/action/{{ e.id }}/reject/">
-        {% csrf_token %}
-        Remark:
-        <input type="text" name="remark" required>
-        <button type="submit">Reject</button>
-    </form>
-
-{% empty %}
-    <p>No pending events.</p>
-{% endfor %}
+</div>
+{% endblock %}

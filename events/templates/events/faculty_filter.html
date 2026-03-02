@@ -1,94 +1,39 @@
+{% extends 'base.html' %}
 {% load event_extras %}
-<h2>{{ page_title }}</h2>
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<div class="card stack">
+    <h2>{{ page_title }}</h2>
+    <form method="get" class="grid-2">
+        <div><label>Search</label><input type="text" name="search" value="{{ request.GET.search }}"></div>
+        <div><label>Status</label>
+            <select name="status">
+                <option value="conducted" {% if selected_status == "conducted" %}selected{% endif %}>Conducted Events</option>
+                <option value="pending" {% if selected_status == "pending" %}selected{% endif %}>Pending</option>
+                <option value="approved" {% if selected_status == "approved" %}selected{% endif %}>Approved</option>
+                <option value="completed" {% if selected_status == "completed" %}selected{% endif %}>Completed (Unverified)</option>
+                <option value="verified" {% if selected_status == "verified" %}selected{% endif %}>Verified</option>
+                <option value="rejected" {% if selected_status == "rejected" %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+        <div><label>Participation</label>
+            <select name="participation">
+                <option value="">All</option>
+                <option value="boys">Boys</option><option value="girls">Girls</option><option value="mixed">Mixed</option>
+            </select>
+        </div>
+        <div><label>Start Date</label><input type="date" name="start_date" value="{{ request.GET.start_date }}"></div>
+        <div><label>End Date</label><input type="date" name="end_date" value="{{ request.GET.end_date }}"></div>
+        <div><button class="btn" type="submit">Search</button></div>
+    </form>
 
-<form method="get">
-
-    🔎 Search:
-    <input type="text" name="search"
-           value="{{ request.GET.search }}">
-
-    Status:
-        <select name="status">
-            <option value="conducted"
-                {% if selected_status == "conducted" %}selected{% endif %}>
-                Conducted Events
-            </option>
-
-            <option value="pending"
-                {% if selected_status == "pending" %}selected{% endif %}>
-                Pending
-            </option>
-
-            <option value="approved"
-                {% if selected_status == "approved" %}selected{% endif %}>
-                Approved
-            </option>
-
-            <option value="completed"
-                {% if selected_status == "completed" %}selected{% endif %}>
-                Completed(Unverified)
-            </option>
-
-            <option value="verified"
-                {% if selected_status == "verified" %}selected{% endif %}>
-                Verified
-            </option>
-
-            <option value="rejected"
-                {% if selected_status == "rejected" %}selected{% endif %}>
-                Rejected
-            </option>
-        </select>
-
-    Participation:
-    <select name="participation">
-        <option value="">All</option>
-        <option value="boys">Boys</option>
-        <option value="girls">Girls</option>
-        <option value="mixed">Mixed</option>
-    </select>
-    📅 Start Date:
-    <input type="date" name="start_date"
-       value="{{ request.GET.start_date }}">
-
-    📅 End Date:
-    <input type="date" name="end_date"
-       value="{{ request.GET.end_date }}">
-
-    <button type="submit">Search</button>
-
-</form>
-
-<hr>
-
-{% for e in events %}
-    <a href="{% url 'event_detail' e.id %}">
-    <b>{{ e.title }}</b>
-    </a> —
-    {{ e.status }} —
-    {{ e.participation_type }} —
-    {{ e|format_event_datetime }}
-    {% if e.status == "verified" %}
-        <span style="
-            background:#28a745;
-            color:white;
-            padding:3px 8px;
-            border-radius:12px;
-            font-size:12px;">
-            Verified
-        </span>
-
-    {% elif e.status == "completed" %}
-        <span style="
-            background:#ffc107;
-            color:black;
-            padding:3px 8px;
-            border-radius:12px;
-            font-size:12px;">
-            Unverified
-        </span>
-    {% endif %}
-    <br>
-{% empty %}
-    No events found.
-{% endfor %}
+    {% for e in events %}
+        <div class="card">
+            <a href="{% url 'event_detail' e.id %}"><b>{{ e.title }}</b></a> — {{ e.status }} — {{ e.participation_type }} — {{ e|format_event_datetime }}
+            {% if e.status == "verified" %}<span class="chip success">Verified</span>{% elif e.status == "completed" %}<span class="chip warning">Unverified</span>{% endif %}
+        </div>
+    {% empty %}
+        <p>No events found.</p>
+    {% endfor %}
+</div>
+{% endblock %}
