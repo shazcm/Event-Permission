@@ -24,6 +24,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER
 import os
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
+from accounts.utils import notify
+from accounts.models import User
 
 
 
@@ -53,6 +57,17 @@ def create_event(request):
                 event.department = request.user.department
 
             event.save()
+
+            principal = User.objects.filter(role='principal').first()
+
+            if principal:
+                notify(
+                    recipient=principal,
+                    sender=request.user,
+                    event=event,
+                    type='submitted',
+                    message=f"New event '{event.title}' submitted for approval."
+                )
 
             messages.success(request, "Event submitted successfully.")
 
@@ -122,6 +137,25 @@ def principal_event_action(request, event_id, action):
         event.principal_remark = remark
 
     event.save()
+    
+
+    if action == 'approve':
+        notify(
+            recipient=event.created_by,
+            sender=request.user,
+            event=event,
+            type='approved',
+            message=f"Your event '{event.title}' has been approved."
+        )
+
+    elif action == 'reject':
+        notify(
+            recipient=event.created_by,
+            sender=request.user,
+            event=event,
+            type='rejected',
+            message=f"Your event '{event.title}' has been rejected."
+        )
 
     return redirect('principal_pending_events')
 
@@ -225,6 +259,16 @@ def post_event_upload(request, event_id):
             return redirect('faculty_dashboard')
 
         event.save()
+        principal = User.objects.filter(role='principal').first()
+
+        if principal:
+            notify(
+                recipient=principal,
+                sender=request.user,
+                event=event,
+                type='completed',
+                message=f"Event '{event.title}' marked as completed. Please verify."
+            )
 
     return render(request, 'events/post_upload.html', {
         'event': event,
@@ -533,6 +577,13 @@ def change_event_venue(request, event_id):
                 )
 
             form.save()
+            notify(
+                recipient=event.created_by,
+                sender=request.user,
+                event=event,
+                type='venue_changed',
+                message=f"Venue changed for '{event.title}'. New venue: {event.venue}"
+            )
             messages.success(request, "Venue updated successfully.")
             return redirect('principal_approved_events')
 
@@ -686,3 +737,27 @@ def download_detailed_report(request, event_id):
     doc.build(elements)
 
     return response
+
+
+@never_cache
+@login_required
+def search_events(request):
+    query = request.GET.get('q', '')
+
+    events = Event.objects.filter(
+        Q(title__icontains=query) |
+        Q(category__icontains=query) |
+        Q(department__icontains=query)
+    )
+
+    data = []
+    for event in events:
+        data.append({
+            "id": event.id,
+            "title": event.title,
+            "category": event.category,
+            "department": event.department,
+            "status": event.status,
+        })
+
+    return JsonResponse({"events": data})

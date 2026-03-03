@@ -11,7 +11,8 @@
         <div class="filters">
             <div>
                 <label for="search">Search</label>
-                <input id="search" type="text" name="search" value="{{ request.GET.search }}" placeholder="Event title">
+                <input type="text" id="searchInput" placeholder="Search events..." />
+                <div id="results"></div>
             </div>
             <div>
                 <label for="category">Category</label>
@@ -94,4 +95,27 @@
         </article>
     {% endfor %}
 </section>
+<script>
+document.getElementById("searchInput").addEventListener("keyup", function() {
+    let query = this.value;
+
+    fetch(`/search-events/?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            let resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "";
+
+            data.events.forEach(event => {
+                resultsDiv.innerHTML += `
+                    <div class="event-card">
+                        <h4>${event.title}</h4>
+                        <p>Category: ${event.category}</p>
+                        <p>Department: ${event.department}</p>
+                        <p>Status: ${event.status}</p>
+                    </div>
+                `;
+            });
+        });
+});
+</script>
 {% endblock %}

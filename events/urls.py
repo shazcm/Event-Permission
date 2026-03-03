@@ -60,4 +60,8 @@ urlpatterns = [
         views.download_detailed_report,
         name='download_detailed_report'),
 
+    path("search-events/", 
+        views.search_events,
+        name="search_events"),
+
 ]

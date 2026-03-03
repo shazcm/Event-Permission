@@ -651,19 +651,68 @@
         {% if request.user.is_authenticated %}
             <aside class="sidebar">
                 <div class="sidebar-head">
-                    <div class="brand">
-                        {% if request.user.role == "principal" %}
-                            Principal Portal
-                        {% elif request.user.role == "faculty" %}
-                            Faculty Portal
-                        {% else %}
-                            Event Portal
-                        {% endif %}
-                    </div>
-                    <button class="collapse-toggle" id="sidebarCollapseToggle" type="button" aria-label="Collapse sidebar">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
-                </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+
+        <div class="brand">
+            {% if request.user.role == "principal" %}
+                Principal Portal
+            {% elif request.user.role == "faculty" %}
+                Faculty Portal
+            {% else %}
+                Event Portal
+            {% endif %}
+        </div>
+
+        <!-- 🔔 Notification Bell -->
+        <div style="position:relative;">
+            <a href="#" id="notifToggle" style="color:white; font-size:18px;">
+                <i class="fa-regular fa-bell"></i>
+                {% if unread_count > 0 %}
+                    <span style="
+                        position:absolute;
+                        top:-6px;
+                        right:-8px;
+                        background:red;
+                        color:white;
+                        font-size:10px;
+                        padding:2px 6px;
+                        border-radius:50%;
+                    ">
+                        {{ unread_count }}
+                    </span>
+                {% endif %}
+            </a>
+
+            <div id="notifDropdown" style="
+                display:none;
+                position:absolute;
+                right:0;
+                top:28px;
+                width:260px;
+                background:white;
+                color:black;
+                border-radius:10px;
+                box-shadow:0 6px 18px rgba(0,0,0,0.15);
+                z-index:999;
+            ">
+                {% for n in recent_notifications %}
+                    <a href="{% url 'notification_redirect' n.id %}"
+                       style="display:block; padding:10px; border-bottom:1px solid #eee;
+                              font-weight:{% if not n.is_read %}700{% else %}400{% endif %};">
+                        {{ n.message }}
+                    </a>
+                {% empty %}
+                    <div style="padding:10px; color:gray;">No notifications</div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <button class="collapse-toggle" id="sidebarCollapseToggle" type="button">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+</div>
                 <div class="sidebar-user">
                     <div class="avatar"><i class="fa-regular fa-user"></i></div>
                     <div class="user-meta">
@@ -745,7 +794,25 @@
                 });
             }
         })();
+        const notifToggle = document.getElementById("notifToggle");
+        const notifDropdown = document.getElementById("notifDropdown");
+
+        if (notifToggle && notifDropdown) {
+            notifToggle.addEventListener("click", function(e){
+                e.preventDefault();
+                notifDropdown.style.display =
+                    notifDropdown.style.display === "block" ? "none" : "block";
+            });
+
+            document.addEventListener("click", function(e){
+                if (!notifToggle.contains(e.target) &&
+                    !notifDropdown.contains(e.target)) {
+                    notifDropdown.style.display = "none";
+                }
+            });
+        }
     </script>
     {% block extra_js %}{% endblock %}
+    
 </body>
 </html>

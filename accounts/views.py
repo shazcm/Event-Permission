@@ -2,7 +2,10 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-
+from django.views.decorators.cache import never_cache
+from .models import Notification
+from django.shortcuts import get_object_or_404
+@never_cache
 def login_view(request):
     if request.method == "POST":
         username = request.POST.get('username')
@@ -29,6 +32,8 @@ def login_view(request):
 
 from events.models import Event
 
+
+@never_cache
 @login_required
 def faculty_dashboard(request):
 
@@ -58,6 +63,9 @@ def faculty_dashboard(request):
 
     # Only events created by this user
     my_events = Event.objects.filter(created_by=user).order_by('-created_at')
+    unread_notifications = request.user.notifications.filter(is_read=False)
+    unread_count = unread_notifications.count()
+    recent_notifications = request.user.notifications.order_by('-created_at')[:5]
 
     context = {
         'my_events': my_events,
@@ -69,13 +77,15 @@ def faculty_dashboard(request):
         'verified_count': my_events.filter(status='verified').count(),
         'rejected_count': my_events.filter(status='rejected').count(),
         'active_nav': 'faculty-dashboard',
+        'unread_count': unread_count,
+        'recent_notifications': recent_notifications,
     }
 
     return render(request,
                   'accounts/faculty_dashboard.html',
                   context)
 
-
+@never_cache
 @login_required
 def principal_dashboard(request):
 
@@ -98,7 +108,9 @@ def principal_dashboard(request):
             'end': event.end_date.isoformat(),
             'department': event.department.name if event.department else 'General',
         })
-
+    unread_notifications = request.user.notifications.filter(is_read=False)
+    unread_count = unread_notifications.count()
+    recent_notifications = request.user.notifications.order_by('-created_at')[:5]
     context = {
         'total_events': total_events,
         'pending_count': pending_events.count(),
@@ -106,14 +118,48 @@ def principal_dashboard(request):
         'rejected_count': rejected_events.count(),
         'recent_pending': recent_pending,
         'calendar_events': calendar_events,
-        'active_nav': 'principal-dashboard',
-    }
 
+        # 🔔 ADD THESE
+        'unread_count': unread_count,
+        'recent_notifications': recent_notifications,
+
+        'active_nav': 'principal-dashboard',
+}
     return render(request, 'accounts/principal_dashboard.html', context)
 
-
+@never_cache
 @login_required
 def logout_view(request):
     logout(request)
+    request.session.flush()
     return redirect('login')
-    
+@login_required
+def notification_redirect(request, pk):
+    notification = get_object_or_404(
+        Notification,
+        id=pk,
+        recipient=request.user
+    )
+
+    notification.is_read = True
+    notification.save()
+    # 🔴 PRINCIPAL LOGIC
+    if request.user.role == 'principal':
+
+        if notification.type == 'submitted':
+            return redirect('principal_pending_events')
+
+        if notification.type == 'completed':
+            return redirect('principal_verify_list')
+
+        return redirect('principal_dashboard')
+
+    # 🟢 FACULTY LOGIC
+    if request.user.role == 'faculty':
+
+        if notification.event:
+            return redirect('event_detail', event_id=notification.event.id)
+
+        return redirect('faculty_dashboard')
+
+    return redirect('home')
