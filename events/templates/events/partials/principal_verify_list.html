@@ -1,0 +1,17 @@
+<div class="muted" style="margin-bottom: 10px;">{{ events|length }} completed event{{ events|pluralize }}</div>
+
+<section class="event-grid">
+    {% for e in events %}
+        <article class="event-card">
+            {% include "events/partials/event_detail_card_body.html" with event=e %}
+
+            <div class="action-row">
+                <a class="btn" href="{% url 'event_detail' e.id %}">Review & Verify</a>
+            </div>
+        </article>
+    {% empty %}
+        <article class="event-card">
+            <p class="muted" style="margin:0;">No events to verify.</p>
+        </article>
+    {% endfor %}
+</section>

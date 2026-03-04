@@ -65,9 +65,10 @@
     <a class="btn secondary" href="{% url 'download_detailed_report' event.id %}">Download Detailed Report</a>
 
     {% if request.user.role == "principal" and event.status == "completed" %}
+        <span class="muted">Final verification is done from this page.</span>
         <form method="post" action="{% url 'principal_verify_event' event.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn">Verify Event</button>
+            <button type="submit" class="btn">Verify This Event</button>
         </form>
     {% endif %}
 </section>

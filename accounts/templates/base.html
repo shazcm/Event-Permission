@@ -208,20 +208,121 @@
             font-size: 1.05rem;
         }
 
-        .topbar {
-            display: none;
+        .dashboard-navbar {
             align-items: center;
             justify-content: space-between;
             margin-bottom: 14px;
+            min-height: 56px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: #ffffff;
+            color: var(--text);
+            display: flex;
+            box-shadow: var(--shadow);
         }
 
-        .menu-toggle {
+        .navbar-left,
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar-label {
+            font-size: .95rem;
+            color: var(--text-soft);
+            font-weight: 700;
+        }
+
+        .navbar-menu-toggle {
+            display: none;
             border: 1px solid var(--line);
-            background: var(--surface);
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
+            background: #fff;
             color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .nav-icon-btn {
+            position: relative;
+            display: inline-grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .notif-badge {
+            position: absolute;
+            top: -5px;
+            right: -6px;
+            background: #d13f4b;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 50%;
+            line-height: 1.1;
+            font-weight: 700;
+        }
+
+        .notif-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 42px;
+            width: 280px;
+            max-height: 320px;
+            overflow: auto;
+            background: #fff;
+            color: #111;
+            border-radius: 10px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+            z-index: 90;
+            border: 1px solid #ebe4de;
+        }
+
+        .notif-item {
+            display: block;
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            color: #252525;
+            font-size: .9rem;
+        }
+
+        .notif-item:last-child {
+            border-bottom: none;
+        }
+
+        .notif-empty {
+            padding: 12px;
+            color: #6b6b6b;
+            font-size: .9rem;
+        }
+
+        .navbar-logout {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            font-weight: 700;
+            font-size: .9rem;
+        }
+
+        .navbar-logout:hover,
+        .nav-icon-btn:hover,
+        .navbar-menu-toggle:hover {
+            background: var(--surface-muted);
         }
 
         .page-head {
@@ -470,6 +571,11 @@
             text-align: center;
         }
 
+        .ajax-loading {
+            opacity: 0.58;
+            transition: opacity .18s ease;
+        }
+
         .calendar {
             border: 1px solid var(--line);
             border-radius: 12px;
@@ -585,10 +691,6 @@
         }
 
         @media (max-width: 900px) {
-            .topbar {
-                display: flex;
-            }
-
             .sidebar {
                 transform: translateX(-100%);
             }
@@ -642,6 +744,19 @@
                 padding-left: 16px;
                 padding-right: 16px;
             }
+
+            .navbar-menu-toggle {
+                display: inline-grid;
+            }
+
+            .navbar-label {
+                display: none;
+            }
+
+            .dashboard-navbar {
+                padding: 8px 10px;
+                min-height: 52px;
+            }
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -651,68 +766,19 @@
         {% if request.user.is_authenticated %}
             <aside class="sidebar">
                 <div class="sidebar-head">
-    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-
-        <div class="brand">
-            {% if request.user.role == "principal" %}
-                Principal Portal
-            {% elif request.user.role == "faculty" %}
-                Faculty Portal
-            {% else %}
-                Event Portal
-            {% endif %}
-        </div>
-
-        <!-- 🔔 Notification Bell -->
-        <div style="position:relative;">
-            <a href="#" id="notifToggle" style="color:white; font-size:18px;">
-                <i class="fa-regular fa-bell"></i>
-                {% if unread_count > 0 %}
-                    <span style="
-                        position:absolute;
-                        top:-6px;
-                        right:-8px;
-                        background:red;
-                        color:white;
-                        font-size:10px;
-                        padding:2px 6px;
-                        border-radius:50%;
-                    ">
-                        {{ unread_count }}
-                    </span>
-                {% endif %}
-            </a>
-
-            <div id="notifDropdown" style="
-                display:none;
-                position:absolute;
-                right:0;
-                top:28px;
-                width:260px;
-                background:white;
-                color:black;
-                border-radius:10px;
-                box-shadow:0 6px 18px rgba(0,0,0,0.15);
-                z-index:999;
-            ">
-                {% for n in recent_notifications %}
-                    <a href="{% url 'notification_redirect' n.id %}"
-                       style="display:block; padding:10px; border-bottom:1px solid #eee;
-                              font-weight:{% if not n.is_read %}700{% else %}400{% endif %};">
-                        {{ n.message }}
-                    </a>
-                {% empty %}
-                    <div style="padding:10px; color:gray;">No notifications</div>
-                {% endfor %}
-            </div>
-        </div>
-
-    </div>
-
-    <button class="collapse-toggle" id="sidebarCollapseToggle" type="button">
-        <i class="fa-solid fa-bars"></i>
-    </button>
-</div>
+                    <div class="brand">
+                        {% if request.user.role == "principal" %}
+                            Principal Portal
+                        {% elif request.user.role == "faculty" %}
+                            Faculty Portal
+                        {% else %}
+                            Event Portal
+                        {% endif %}
+                    </div>
+                    <button class="collapse-toggle" id="sidebarCollapseToggle" type="button">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                </div>
                 <div class="sidebar-user">
                     <div class="avatar"><i class="fa-regular fa-user"></i></div>
                     <div class="user-meta">
@@ -736,24 +802,54 @@
                         <li><a class="nav-link {% if active_nav == 'faculty-filter' or request.resolver_match.url_name == 'faculty_filter_events' %}active{% endif %}" href="{% url 'faculty_filter_events' %}" title="All Related Events"><i class="fa-solid fa-filter"></i><span class="nav-text">All Related Events</span></a></li>
                     {% endif %}
                 </ul>
-
-                <div class="sidebar-foot">
-                    <a class="nav-link" href="{% url 'logout' %}" title="Logout">
-                        <i class="fa-solid fa-right-from-bracket"></i><span class="nav-text">Logout</span>
-                    </a>
-                </div>
             </aside>
             <div class="overlay" id="navOverlay"></div>
         {% endif %}
 
         <main class="main">
             {% if request.user.is_authenticated %}
-                <div class="topbar">
-                    <button class="menu-toggle" id="menuToggle" type="button">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
-                    <a class="btn secondary" href="{% url 'logout' %}">Logout</a>
-                </div>
+                <nav class="dashboard-navbar">
+                    <div class="navbar-left">
+                        <button class="navbar-menu-toggle" id="menuToggle" type="button" aria-label="Open Menu">
+                            <i class="fa-solid fa-bars"></i>
+                        </button>
+                        <span class="navbar-label">
+                            {% if request.user.role == "principal" %}
+                                Principal Dashboard
+                            {% elif request.user.role == "faculty" %}
+                                Faculty Dashboard
+                            {% else %}
+                                Dashboard
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="navbar-right">
+                        <div style="position:relative;">
+                            <button class="nav-icon-btn" id="notifToggle" type="button" aria-label="Notifications">
+                                <i class="fa-regular fa-bell"></i>
+                                {% if unread_count > 0 %}
+                                    <span class="notif-badge">{{ unread_count }}</span>
+                                {% endif %}
+                            </button>
+                            <div id="notifDropdown" class="notif-dropdown">
+                                {% for n in recent_notifications %}
+                                    <a href="{% url 'notification_redirect' n.id %}"
+                                       class="notif-item"
+                                       style="font-weight:{% if not n.is_read %}700{% else %}500{% endif %};">
+                                        {{ n.message }}
+                                    </a>
+                                {% empty %}
+                                    <div class="notif-empty">No notifications</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <a class="navbar-logout" href="{% url 'logout' %}">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            Logout
+                        </a>
+                    </div>
+                </nav>
             {% endif %}
 
             <header class="page-head">
@@ -772,6 +868,18 @@
     </div>
 
     <script>
+        // Force server revalidation when coming back via browser history.
+        window.addEventListener("pageshow", function (event) {
+            const navEntries = performance.getEntriesByType
+                ? performance.getEntriesByType("navigation")
+                : [];
+            const isBackForward = navEntries.length > 0 && navEntries[0].type === "back_forward";
+
+            if (event.persisted || isBackForward) {
+                window.location.reload();
+            }
+        });
+
         (function () {
             const menuToggle = document.getElementById("menuToggle");
             const overlay = document.getElementById("navOverlay");
@@ -811,6 +919,81 @@
                 }
             });
         }
+
+        (function () {
+            const ajaxForms = document.querySelectorAll("form[data-ajax-list]");
+            if (!ajaxForms.length) return;
+
+            const cleanupParams = function (params) {
+                const cleaned = new URLSearchParams();
+                params.forEach(function (value, key) {
+                    if (value !== "") cleaned.append(key, value);
+                });
+                return cleaned;
+            };
+
+            ajaxForms.forEach(function (form) {
+                const targetSelector = form.getAttribute("data-ajax-list");
+                const target = targetSelector ? document.querySelector(targetSelector) : null;
+                if (!target) return;
+
+                const method = (form.getAttribute("method") || "get").toLowerCase();
+                if (method !== "get") return;
+
+                const delay = Number(form.getAttribute("data-ajax-delay") || 280);
+                let debounceTimer = null;
+
+                const submitAjax = function () {
+                    const baseUrl = form.getAttribute("action") || window.location.pathname;
+                    const formData = new FormData(form);
+                    const params = cleanupParams(new URLSearchParams(formData));
+                    const historyParams = new URLSearchParams(params.toString());
+                    params.set("ajax", "1");
+
+                    const queryString = params.toString();
+                    const requestUrl = queryString ? baseUrl + "?" + queryString : baseUrl;
+
+                    target.classList.add("ajax-loading");
+                    fetch(requestUrl, {
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest",
+                        },
+                    })
+                        .then(function (response) {
+                            return response.text();
+                        })
+                        .then(function (html) {
+                            target.innerHTML = html;
+                            const historyQuery = historyParams.toString();
+                            const historyUrl = historyQuery ? baseUrl + "?" + historyQuery : baseUrl;
+                            window.history.replaceState({}, "", historyUrl);
+                        })
+                        .catch(function () {
+                            // Keep the current UI if request fails.
+                        })
+                        .finally(function () {
+                            target.classList.remove("ajax-loading");
+                        });
+                };
+
+                const scheduleSubmit = function () {
+                    window.clearTimeout(debounceTimer);
+                    debounceTimer = window.setTimeout(submitAjax, delay);
+                };
+
+                form.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    submitAjax();
+                });
+
+                form.querySelectorAll("input, select, textarea").forEach(function (field) {
+                    if (field.matches("input[type='text'], input[type='search'], input[type='date'], textarea")) {
+                        field.addEventListener("input", scheduleSubmit);
+                    }
+                    field.addEventListener("change", scheduleSubmit);
+                });
+            });
+        })();
     </script>
     {% block extra_js %}{% endblock %}
     

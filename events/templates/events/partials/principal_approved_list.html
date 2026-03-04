@@ -1,0 +1,16 @@
+<div class="muted" style="margin-bottom: 10px;">{{ approved_events|length }} approved event{{ approved_events|pluralize }}</div>
+
+<section class="event-grid">
+    {% for e in approved_events %}
+        <article class="event-card">
+            {% include "events/partials/event_detail_card_body.html" with event=e %}
+
+            <div class="action-row">
+                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                <a class="btn secondary" href="{% url 'change_event_venue' e.id %}">Change Venue</a>
+            </div>
+        </article>
+    {% empty %}
+        <article class="event-card"><p class="muted" style="margin:0;">No approved events.</p></article>
+    {% endfor %}
+</section>

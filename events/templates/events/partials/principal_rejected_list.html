@@ -1,0 +1,15 @@
+<div class="muted" style="margin-bottom: 10px;">{{ rejected_events|length }} rejected event{{ rejected_events|pluralize }}</div>
+
+<section class="event-grid">
+    {% for e in rejected_events %}
+        <article class="event-card">
+            {% include "events/partials/event_detail_card_body.html" with event=e show_rejection_reason=1 %}
+
+            <div class="action-row">
+                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+            </div>
+        </article>
+    {% empty %}
+        <article class="event-card"><p class="muted" style="margin:0;">No rejected events.</p></article>
+    {% endfor %}
+</section>

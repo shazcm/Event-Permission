@@ -5,8 +5,26 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from .models import Notification
 from django.shortcuts import get_object_or_404
+
+
+def _redirect_for_role(user):
+    if user.is_superuser or (user.is_staff and user.role == 'admin'):
+        return redirect('/admin/')
+
+    if user.role == 'principal':
+        return redirect('principal_dashboard')
+
+    if user.role == 'faculty':
+        return redirect('faculty_dashboard')
+
+    return redirect('logout')
+
+
 @never_cache
 def login_view(request):
+    if request.user.is_authenticated:
+        return _redirect_for_role(request.user)
+
     if request.method == "POST":
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -15,16 +33,7 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-
-            # Role based redirect
-            if user.is_superuser or user.is_staff and user.role == 'admin':
-                return redirect('/admin/')
-
-            elif user.role == 'principal':
-                return redirect('principal_dashboard')
-
-            elif user.role == 'faculty':
-                return redirect('faculty_dashboard')
+            return _redirect_for_role(user)
         else:
             messages.error(request, "Invalid username or password")
 
@@ -34,7 +43,7 @@ from events.models import Event
 
 
 @never_cache
-@login_required
+@login_required(login_url='/login/')
 def faculty_dashboard(request):
 
     if request.user.role != 'faculty':
@@ -86,7 +95,7 @@ def faculty_dashboard(request):
                   context)
 
 @never_cache
-@login_required
+@login_required(login_url='/login/')
 def principal_dashboard(request):
 
     if request.user.role != 'principal':
@@ -128,12 +137,12 @@ def principal_dashboard(request):
     return render(request, 'accounts/principal_dashboard.html', context)
 
 @never_cache
-@login_required
+@login_required(login_url='/login/')
 def logout_view(request):
     logout(request)
     request.session.flush()
     return redirect('login')
-@login_required
+@login_required(login_url='/login/')
 def notification_redirect(request, pk):
     notification = get_object_or_404(
         Notification,

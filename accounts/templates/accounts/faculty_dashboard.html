@@ -32,41 +32,26 @@
 
 <section class="panel">
     <h3 style="margin-top: 0;">Your Events</h3>
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Participation</th>
-                    <th>Date & Time</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for e in my_events %}
-                    <tr>
-                        <td><a href="{% url 'event_detail' e.id %}"><strong>{{ e.title }}</strong></a></td>
-                        <td>
-                            <span class="chip {{ e.status }}">{{ e.status|title }}</span>
-                        </td>
-                        <td>{{ e.participation_type|title }}</td>
-                        <td>{{ e|format_event_datetime }}</td>
-                        <td>
-                            {% if e.status == 'approved' %}
-                                <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
-                            {% else %}
-                                <span class="muted">-</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="5" class="muted">You have not created any events.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <section class="event-grid">
+        {% for e in my_events %}
+            <article class="event-card">
+                {% include "events/partials/event_detail_card_body.html" with event=e %}
+
+                <div class="action-row">
+                    <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                    {% if e.status == 'approved' %}
+                        <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <article class="event-card">
+                <p class="muted" style="margin:0;">You have not created any events.</p>
+            </article>
+        {% endfor %}
+    </section>
+    <div style="margin-top: 12px;">
+        <a class="card-link" href="{% url 'faculty_filter_events' %}">View All Related Events</a>
     </div>
 </section>
 {% endblock %}

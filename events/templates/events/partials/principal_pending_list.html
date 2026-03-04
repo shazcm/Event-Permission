@@ -1,0 +1,24 @@
+<div class="muted" style="margin-bottom: 10px;">{{ events|length }} pending event{{ events|pluralize }}</div>
+
+<section class="event-grid">
+    {% for e in events %}
+        <article class="event-card">
+            {% include "events/partials/event_detail_card_body.html" with event=e %}
+
+            <div class="action-row">
+                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                <form method="post" action="{% url 'principal_event_action' e.id 'approve' %}" style="display:flex;flex:1;">
+                    {% csrf_token %}
+                    <button class="btn" type="submit" style="width:100%;">Approve</button>
+                </form>
+            </div>
+            <form method="post" action="{% url 'principal_event_action' e.id 'reject' %}" style="margin-top: 8px;">
+                {% csrf_token %}
+                <input type="text" name="remark" placeholder="Reason for rejection" required>
+                <button class="btn secondary" type="submit" style="width:100%;">Reject</button>
+            </form>
+        </article>
+    {% empty %}
+        <article class="event-card"><p class="muted" style="margin:0;">No pending events.</p></article>
+    {% endfor %}
+</section>

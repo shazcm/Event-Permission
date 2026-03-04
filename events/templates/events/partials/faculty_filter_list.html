@@ -1,0 +1,20 @@
+<div class="muted" style="margin-bottom: 10px;">Showing {{ events|length }} event{{ events|pluralize }}</div>
+
+<section class="event-grid">
+    {% for e in events %}
+        <article class="event-card">
+            {% include "events/partials/event_detail_card_body.html" with event=e %}
+
+            <div class="action-row">
+                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                {% if e.status == 'approved' %}
+                    <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
+                {% endif %}
+            </div>
+        </article>
+    {% empty %}
+        <article class="event-card">
+            <p class="muted" style="margin:0;">No events found.</p>
+        </article>
+    {% endfor %}
+</section>

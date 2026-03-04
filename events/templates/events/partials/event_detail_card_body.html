@@ -1,0 +1,28 @@
+{% load event_extras %}
+
+<div class="event-head">
+    <h3 class="event-title">
+        <a href="{% url 'event_detail' event.id %}">{{ event.title }}</a>
+    </h3>
+    <span class="chip {{ event.status }}">{{ event.status|title }}</span>
+</div>
+
+<p class="event-desc">{{ event.description|default:"No description provided."|truncatewords:22 }}</p>
+
+<div class="meta-grid">
+    <div class="meta-row"><i class="fa-regular fa-user"></i><span class="meta-label">Organizer:</span><span class="meta-value">{{ event.created_by.get_full_name|default:event.created_by.username }}</span></div>
+    <div class="meta-row"><i class="fa-regular fa-star"></i><span class="meta-label">Chief Guest:</span><span class="meta-value">{{ event.chief_guest|default:"-" }}</span></div>
+    <div class="meta-row"><i class="fa-regular fa-building"></i><span class="meta-label">Dept:</span><span class="meta-value">{{ event.department|default:"General" }}</span></div>
+    <div class="meta-row"><i class="fa-regular fa-rectangle-list"></i><span class="meta-label">Type:</span><span class="meta-value">{{ event.category|title }}</span></div>
+    <div class="meta-row"><i class="fa-regular fa-calendar"></i><span class="meta-label">Date:</span><span class="meta-value">{{ event.start_date|date:"d/m/Y" }}{% if event.end_date and event.end_date != event.start_date %} - {{ event.end_date|date:"d/m/Y" }}{% endif %}</span></div>
+    <div class="meta-row"><i class="fa-regular fa-clock"></i><span class="meta-label">Time:</span><span class="meta-value">{% if event.start_time %}{{ event.start_time|time:"h:i A" }}{% else %}-{% endif %} - {% if event.end_time %}{{ event.end_time|time:"h:i A" }}{% else %}-{% endif %}</span></div>
+    <div class="meta-row"><i class="fa-solid fa-location-dot"></i><span class="meta-label">Venue:</span><span class="meta-value">{{ event.venue }}</span></div>
+    <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ event.participation_type|title }}</span></div>
+    <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ event.budget }}</span></div>
+</div>
+
+{% if show_rejection_reason %}
+    <div class="reason-box">
+        Rejection Reason: {{ event.principal_remark|default:"No remark provided." }}
+    </div>
+{% endif %}

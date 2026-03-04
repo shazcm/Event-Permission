@@ -6,41 +6,5 @@
 {% block page_subtitle %}Review and approve/reject event requests awaiting principal action.{% endblock %}
 
 {% block content %}
-<section class="event-grid">
-    {% for e in events %}
-        <article class="event-card">
-            <div class="event-head">
-                <h3 class="event-title"><a href="{% url 'event_detail' e.id %}">{{ e.title }}</a></h3>
-                <span class="chip pending">Pending</span>
-            </div>
-            <p class="event-desc">{{ e.description|truncatewords:22 }}</p>
-
-            <div class="meta-grid">
-                <div class="meta-row"><i class="fa-regular fa-user"></i><span class="meta-label">Organizer:</span><span class="meta-value">{{ e.created_by.get_full_name|default:e.created_by.username }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-building"></i><span class="meta-label">Dept:</span><span class="meta-value">{{ e.department|default:"General" }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-calendar"></i><span class="meta-label">Date:</span><span class="meta-value">{{ e.start_date|date:"d/m/Y" }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-clock"></i><span class="meta-label">Time:</span><span class="meta-value">{{ e.start_time|time:"h:i A"|default:"-" }} - {{ e.end_time|time:"h:i A"|default:"-" }}</span></div>
-                <div class="meta-row"><i class="fa-solid fa-location-dot"></i><span class="meta-label">Venue:</span><span class="meta-value">{{ e.venue }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-rectangle-list"></i><span class="meta-label">Type:</span><span class="meta-value">{{ e.category|title }}</span></div>
-                <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ e.participation_type|title }}</span></div>
-                <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ e.budget }}</span></div>
-            </div>
-
-            <div class="action-row">
-                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
-                <form method="post" action="{% url 'principal_event_action' e.id 'approve' %}" style="display:flex;flex:1;">
-                    {% csrf_token %}
-                    <button class="btn" type="submit" style="width:100%;">Approve</button>
-                </form>
-            </div>
-            <form method="post" action="{% url 'principal_event_action' e.id 'reject' %}" style="margin-top: 8px;">
-                {% csrf_token %}
-                <input type="text" name="remark" placeholder="Reason for rejection" required>
-                <button class="btn secondary" type="submit" style="width:100%;">Reject</button>
-            </form>
-        </article>
-    {% empty %}
-        <article class="event-card"><p class="muted" style="margin:0;">No pending events.</p></article>
-    {% endfor %}
-</section>
+{% include "events/partials/principal_pending_list.html" %}
 {% endblock %}

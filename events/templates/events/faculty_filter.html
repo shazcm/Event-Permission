@@ -7,7 +7,7 @@
 
 {% block content %}
 <section class="panel" style="margin-bottom:18px;">
-    <form method="get">
+    <form method="get" data-ajax-list="#facultyFilterList" data-ajax-delay="300">
         <div class="filters">
             <div>
                 <label for="search">Search</label>
@@ -47,32 +47,7 @@
     </form>
 </section>
 
-<section class="panel">
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Participation</th>
-                    <th>Date & Time</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for e in events %}
-                    <tr>
-                        <td><a href="{% url 'event_detail' e.id %}"><strong>{{ e.title }}</strong></a></td>
-                        <td><span class="chip {{ e.status }}">{{ e.status|title }}</span></td>
-                        <td>{{ e.participation_type|title }}</td>
-                        <td>{{ e|format_event_datetime }}</td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="4" class="muted">No events found.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
+<div id="facultyFilterList">
+    {% include "events/partials/faculty_filter_list.html" %}
+</div>
 {% endblock %}

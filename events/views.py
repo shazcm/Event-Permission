@@ -30,8 +30,33 @@ from accounts.utils import notify
 from accounts.models import User
 
 
+def _is_ajax_request(request):
+    return (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.GET.get("ajax") == "1"
+    )
 
-@login_required
+
+def _apply_event_search(queryset, query):
+    if not query:
+        return queryset
+
+    return queryset.filter(
+        Q(title__icontains=query) |
+        Q(description__icontains=query) |
+        Q(category__icontains=query) |
+        Q(participation_type__icontains=query) |
+        Q(status__icontains=query) |
+        Q(department__name__icontains=query) |
+        Q(venue__name__icontains=query) |
+        Q(created_by__username__icontains=query) |
+        Q(created_by__first_name__icontains=query) |
+        Q(created_by__last_name__icontains=query)
+    )
+
+
+
+@login_required(login_url='/login/')
 def create_event(request):
 
     if request.method == "POST":
@@ -86,7 +111,7 @@ def create_event(request):
         }
     )
 
-@login_required
+@login_required(login_url='/login/')
 def principal_pending_events(request):
 
     if request.user.role != 'principal':
@@ -103,7 +128,7 @@ def principal_pending_events(request):
         }
     )
 
-@login_required
+@login_required(login_url='/login/')
 def principal_event_action(request, event_id, action):
 
     if request.user.role != 'principal':
@@ -216,7 +241,7 @@ A total of {photo_count} photographic records were documented
 as part of the official event proceedings.
 """
 
-@login_required
+@login_required(login_url='/login/')
 def post_event_upload(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
@@ -275,7 +300,7 @@ def post_event_upload(request, event_id):
         'active_nav': 'faculty-dashboard',
     })
 
-@login_required
+@login_required(login_url='/login/')
 def principal_verify_list(request):
 
     if request.user.role != 'principal':
@@ -290,7 +315,7 @@ def principal_verify_list(request):
                       'active_nav': 'principal-verify',
                   })
 
-@login_required
+@login_required(login_url='/login/')
 def principal_verify_event(request, event_id):
 
     if request.user.role != 'principal':
@@ -305,7 +330,7 @@ def principal_verify_event(request, event_id):
     return redirect('event_detail', event_id=event.id)
 
 
-@login_required
+@login_required(login_url='/login/')
 def analytics_dashboard(request):
 
     if request.user.role != 'principal':
@@ -345,20 +370,19 @@ def analytics_dashboard(request):
     return render(request, 'events/analytics.html', context)
 
 
-@login_required
+@login_required(login_url='/login/')
 def view_all_events(request):
 
     if request.user.role != 'principal':
         return redirect('login')
 
     events = Event.objects.filter(
-    status__in=['completed', 'verified']
-    ).order_by('-start_date')
+        status__in=['completed', 'verified']
+    ).select_related('created_by', 'department', 'venue').order_by('-start_date')
 
-    # 🔎 Search by title
-    search = request.GET.get('search')
-    if search:
-        events = events.filter(title__icontains=search)
+    # 🔎 Search
+    search = request.GET.get('search', '').strip()
+    events = _apply_event_search(events, search)
 
 
     # 🏢 Department filter
@@ -407,12 +431,13 @@ def view_all_events(request):
         'active_nav': 'principal-all',
     }
 
-    return render(request, 
-                  'events/view_all_events.html', 
-                  context)
+    if _is_ajax_request(request):
+        return render(request, 'events/partials/view_all_events_list.html', context)
+
+    return render(request, 'events/view_all_events.html', context)
 
 
-@login_required
+@login_required(login_url='/login/')
 def faculty_filter_events(request):
 
     if request.user.role != 'faculty':
@@ -445,10 +470,11 @@ def faculty_filter_events(request):
         events = Event.objects.none()
         page_title = "Events"
 
+    events = events.select_related('created_by', 'department', 'venue').order_by('-start_date')
+
     # 🔎 Search
-    search = request.GET.get('search')
-    if search:
-        events = events.filter(title__icontains=search)
+    search = request.GET.get('search', '').strip()
+    events = _apply_event_search(events, search)
 
     # 📌 Status filter
     status = request.GET.get('status')
@@ -490,12 +516,13 @@ def faculty_filter_events(request):
         'active_nav': 'faculty-filter',
     }
 
-    return render(request,
-                  'events/faculty_filter.html',
-                  context)
+    if _is_ajax_request(request):
+        return render(request, 'events/partials/faculty_filter_list.html', context)
+
+    return render(request, 'events/faculty_filter.html', context)
 
 
-@login_required
+@login_required(login_url='/login/')
 def principal_approved_events(request):
 
     if request.user.role != 'principal':
@@ -520,7 +547,7 @@ def principal_approved_events(request):
     )
 
 
-@login_required
+@login_required(login_url='/login/')
 def change_event_venue(request, event_id):
 
     if request.user.role != 'principal':
@@ -601,7 +628,7 @@ def change_event_venue(request, event_id):
     )
 
 
-@login_required
+@login_required(login_url='/login/')
 def check_venue_conflict(request):
 
     venue_id = request.GET.get('venue')
@@ -641,7 +668,7 @@ def check_venue_conflict(request):
 
     return JsonResponse({'status': 'clear'})
 
-@login_required
+@login_required(login_url='/login/')
 def event_detail(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
@@ -651,7 +678,7 @@ def event_detail(request, event_id):
                   {'event': event})
 
 
-@login_required
+@login_required(login_url='/login/')
 def principal_rejected_events(request):
 
     if request.user.role != 'principal':
@@ -740,15 +767,16 @@ def download_detailed_report(request, event_id):
 
 
 @never_cache
-@login_required
+@login_required(login_url='/login/')
 def search_events(request):
     query = request.GET.get('q', '')
 
     events = Event.objects.filter(
         Q(title__icontains=query) |
         Q(category__icontains=query) |
-        Q(department__icontains=query)
-    )
+        Q(department__name__icontains=query) |
+        Q(venue__name__icontains=query)
+    ).select_related('department').order_by('-start_date')
 
     data = []
     for event in events:
@@ -756,7 +784,7 @@ def search_events(request):
             "id": event.id,
             "title": event.title,
             "category": event.category,
-            "department": event.department,
+            "department": event.department.name if event.department else "General",
             "status": event.status,
         })
 

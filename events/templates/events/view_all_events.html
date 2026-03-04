@@ -7,12 +7,11 @@
 
 {% block content %}
 <section class="panel" style="margin-bottom:14px;">
-    <form method="get">
+    <form method="get" data-ajax-list="#allEventsList" data-ajax-delay="300">
         <div class="filters">
             <div>
                 <label for="search">Search</label>
-                <input type="text" id="searchInput" placeholder="Search events..." />
-                <div id="results"></div>
+                <input type="text" id="search" name="search" value="{{ request.GET.search }}" placeholder="Search by title, category, or department">
             </div>
             <div>
                 <label for="category">Category</label>
@@ -56,66 +55,14 @@
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <button class="btn" type="submit">Search</button>
             <label style="display:flex;align-items:center;gap:8px;margin:0;">
-                <input style="width:auto;margin:0;" type="checkbox" name="verified" value="1" {% if show_verified %}checked{% endif %} onchange="this.form.submit()">
+                <input style="width:auto;margin:0;" type="checkbox" name="verified" value="1" {% if show_verified %}checked{% endif %}>
                 Verified Only
             </label>
         </div>
     </form>
 </section>
 
-<div class="muted" style="margin-bottom: 10px;">Showing {{ events|length }} event{{ events|pluralize }}</div>
-
-<section class="event-grid">
-    {% for e in events %}
-        <article class="event-card">
-            <div class="event-head">
-                <h3 class="event-title">{{ e.title }}</h3>
-                <span class="chip {{ e.status }}">{{ e.status|title }}</span>
-            </div>
-            <p class="event-desc">{{ e.description|truncatewords:18 }}</p>
-
-            <div class="meta-grid">
-                <div class="meta-row"><i class="fa-regular fa-user"></i><span class="meta-label">Organizer:</span><span class="meta-value">{{ e.created_by.get_full_name|default:e.created_by.username }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-building"></i><span class="meta-label">Dept:</span><span class="meta-value">{{ e.department|default:"General" }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-calendar"></i><span class="meta-label">Date:</span><span class="meta-value">{{ e.start_date|date:"d/m/Y" }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-clock"></i><span class="meta-label">Time:</span><span class="meta-value">{{ e.start_time|time:"h:i A"|default:"-" }} - {{ e.end_time|time:"h:i A"|default:"-" }}</span></div>
-                <div class="meta-row"><i class="fa-solid fa-location-dot"></i><span class="meta-label">Venue:</span><span class="meta-value">{{ e.venue }}</span></div>
-                <div class="meta-row"><i class="fa-regular fa-rectangle-list"></i><span class="meta-label">Type:</span><span class="meta-value">{{ e.category|title }}</span></div>
-                <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ e.participation_type|title }}</span></div>
-                <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ e.budget }}</span></div>
-            </div>
-
-            <div class="action-row">
-                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
-            </div>
-        </article>
-    {% empty %}
-        <article class="event-card">
-            <p class="muted" style="margin:0;">No events found.</p>
-        </article>
-    {% endfor %}
-</section>
-<script>
-document.getElementById("searchInput").addEventListener("keyup", function() {
-    let query = this.value;
-
-    fetch(`/search-events/?q=${query}`)
-        .then(response => response.json())
-        .then(data => {
-            let resultsDiv = document.getElementById("results");
-            resultsDiv.innerHTML = "";
-
-            data.events.forEach(event => {
-                resultsDiv.innerHTML += `
-                    <div class="event-card">
-                        <h4>${event.title}</h4>
-                        <p>Category: ${event.category}</p>
-                        <p>Department: ${event.department}</p>
-                        <p>Status: ${event.status}</p>
-                    </div>
-                `;
-            });
-        });
-});
-</script>
+<div id="allEventsList">
+    {% include "events/partials/view_all_events_list.html" %}
+</div>
 {% endblock %}
