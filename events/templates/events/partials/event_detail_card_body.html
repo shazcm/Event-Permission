@@ -7,6 +7,16 @@
     <span class="chip {{ event.status }}">{{ event.status|title }}</span>
 </div>
 
+<div class="event-tags">
+{% for tag in event.tags.all %}
+<a href="?search=#{{ tag.name }}" class="tag">
+#{{ tag.name }}
+</a>
+{% endfor %}
+</div>
+
+
+
 <p class="event-desc">{{ event.description|default:"No description provided."|truncatewords:22 }}</p>
 
 <div class="meta-grid">
@@ -20,6 +30,26 @@
     <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ event.participation_type|title }}</span></div>
     <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ event.budget }}</span></div>
 </div>
+
+{% block extra_css %}
+<style>
+
+.tag{
+    background:#f3f3f3;
+    padding:4px 8px;
+    margin-right:6px;
+    border-radius:6px;
+    font-size:12px;
+    text-decoration:none;
+    color:#333;
+}
+
+.tag:hover{
+    background:#ddd;
+}
+
+</style>
+{% endblock %}
 
 {% if show_rejection_reason %}
     <div class="reason-box">

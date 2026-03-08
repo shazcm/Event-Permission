@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import EventForm
-from .models import Event, Department
+from .models import Event, Department, Tag
 from django.utils import timezone
 from .forms import PostEventForm
 from django.db.models import Count
@@ -38,9 +38,21 @@ def _is_ajax_request(request):
 
 
 def _apply_event_search(queryset, query):
+
     if not query:
         return queryset
 
+    # Hashtag search
+    if query.startswith("#"):
+
+        tag_name = query[1:].strip().lower()
+
+        return queryset.filter(
+            tags__name__iexact=tag_name,
+            status__in=["completed","verified"]
+        ).distinct()
+
+    # Normal search
     return queryset.filter(
         Q(title__icontains=query) |
         Q(description__icontains=query) |
@@ -51,8 +63,9 @@ def _apply_event_search(queryset, query):
         Q(venue__name__icontains=query) |
         Q(created_by__username__icontains=query) |
         Q(created_by__first_name__icontains=query) |
-        Q(created_by__last_name__icontains=query)
-    )
+        Q(created_by__last_name__icontains=query) |
+        Q(tags__name__icontains=query)
+    ).distinct()
 
 
 
@@ -83,6 +96,25 @@ def create_event(request):
 
             event.save()
 
+            tags = form.cleaned_data.get("tags_input")
+
+            if tags:
+                for tag_name in tags.split(","):
+
+                    # remove spaces
+                    tag_name = tag_name.strip().lower()
+
+                    # remove # if user typed it
+                    tag_name = tag_name.lstrip("#")
+
+                    # ignore empty tags
+                    if not tag_name:
+                        continue
+
+                    tag, created = Tag.objects.get_or_create(name=tag_name)
+
+                    event.tags.add(tag)
+
             principal = User.objects.filter(role='principal').first()
 
             if principal:
@@ -110,6 +142,18 @@ def create_event(request):
             'active_nav': 'faculty-create',
         }
     )
+def tag_autocomplete(request):
+
+    query = request.GET.get("q")
+
+    if not query:
+        return JsonResponse([], safe=False)
+
+    tags = Tag.objects.filter(name__icontains=query)[:10]
+
+    data = list(tags.values_list("name", flat=True))
+
+    return JsonResponse(data, safe=False)
 
 @login_required(login_url='/login/')
 def principal_pending_events(request):

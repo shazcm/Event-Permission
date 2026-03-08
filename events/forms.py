@@ -1,9 +1,18 @@
 from django import forms
 from .models import Event
 from .models import EventPhoto
+from .models import Tag
 
 class EventForm(forms.ModelForm):
 
+    tags_input = forms.CharField(
+    label="Tags",
+    required=False,
+    widget=forms.TextInput(attrs={
+        "id": "tag-input",
+        "placeholder": "Example: seminar, sports, workshop"
+    })
+    )
     class Meta:
         model = Event
         fields = [

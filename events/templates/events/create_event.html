@@ -115,4 +115,68 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 </script>
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+const tagInput = document.getElementById("tag-input");
+
+if(!tagInput) return;
+
+const suggestionBox = document.createElement("div");
+suggestionBox.style.border = "1px solid #ddd";
+suggestionBox.style.background = "#fff";
+suggestionBox.style.position = "absolute";
+suggestionBox.style.zIndex = "1000";
+
+tagInput.parentNode.appendChild(suggestionBox);
+
+tagInput.addEventListener("keyup", function(){
+
+let query = tagInput.value.split(",").pop().trim();
+
+if(query.length < 1){
+    suggestionBox.innerHTML = "";
+    return;
+}
+
+fetch(`/events/tag-autocomplete/?q=${query}`)
+.then(res => res.json())
+.then(data => {
+
+suggestionBox.innerHTML = "";
+
+data.forEach(tag => {
+
+let item = document.createElement("div");
+
+item.textContent = tag;
+item.style.padding = "5px";
+item.style.cursor = "pointer";
+
+item.onclick = function(){
+
+let tags = tagInput.value.split(",");
+
+tags.pop();
+
+tags.push(tag);
+
+tagInput.value = tags.join(", ") + ", ";
+
+suggestionBox.innerHTML = "";
+
+}
+
+suggestionBox.appendChild(item);
+
+});
+
+});
+
+});
+
+});
+
+</script>
 {% endblock %}

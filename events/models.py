@@ -14,6 +14,12 @@ class Venue(models.Model):
     def __str__(self):
         return self.name
     
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+    
 class Event(models.Model):
 
     CATEGORY_CHOICES = (
@@ -70,6 +76,7 @@ class Event(models.Model):
     end_time = models.TimeField(null=True, blank=True)
 
     description = models.TextField()
+    tags = models.ManyToManyField(Tag, blank=True)
 
     status = models.CharField(
         max_length=20,

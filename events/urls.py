@@ -63,5 +63,7 @@ urlpatterns = [
     path("search-events/", 
         views.search_events,
         name="search_events"),
+    
+    path("tag-autocomplete/", views.tag_autocomplete, name="tag_autocomplete"),
 
 ]
