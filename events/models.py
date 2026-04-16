@@ -42,6 +42,7 @@ class Event(models.Model):
         ('rejected', 'Rejected'),
         ('completed', 'Completed'),
         ('verified', 'Verified'),
+        ('cancelled', 'Cancelled'),
     )
 
     title = models.CharField(max_length=200)

@@ -37,11 +37,33 @@
             <article class="event-card">
                 {% include "events/partials/event_detail_card_body.html" with event=e %}
 
-                <div class="action-row">
-                    <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                <div class="action-row" style="display:flex; gap:8px; flex-wrap:wrap;">
+
+                    <!-- View -->
+                    <a class="btn secondary" href="{% url 'event_detail' e.id %}">
+                        View Details
+                    </a>
+
+                    <!-- Upload (only if approved) -->
                     {% if e.status == 'approved' %}
-                        <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
+                        <a class="btn" href="{% url 'post_event_upload' e.id %}">
+                            Upload Post-Event
+                        </a>
                     {% endif %}
+
+                    <!-- ✅ Cancel Button (NEW) -->
+                    {% if e.status == 'pending' or e.status == 'approved' %}
+                        <form method="POST" action="{% url 'cancel_event' e.id %}">
+                            {% csrf_token %}
+
+                            <button type="submit"
+                                    class="btn btn-danger btn-sm"
+                                    onclick="return confirm('Are you sure you want to cancel this event?')">
+                                Cancel Event
+                            </button>
+                        </form>
+                    {% endif %}
+
                 </div>
             </article>
         {% empty %}

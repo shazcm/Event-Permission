@@ -66,4 +66,6 @@ urlpatterns = [
     
     path("tag-autocomplete/", views.tag_autocomplete, name="tag_autocomplete"),
 
+    path('cancel-event/<int:event_id>/', views.cancel_event, name='cancel_event'),
+
 ]

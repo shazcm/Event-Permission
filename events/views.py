@@ -301,8 +301,18 @@ def post_event_upload(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
 
+    if event.status == 'cancelled':
+        messages.error(request, "This event has been cancelled.")
+        return redirect('faculty_dashboard')
+
     # Only event creator can access
     if event.created_by != request.user:
+        return redirect('faculty_dashboard')
+    
+    today = timezone.now().date()
+
+    if event.end_date > today:
+        messages.error(request, "You can upload post-event details only after the event is completed.")
         return redirect('faculty_dashboard')
 
     if request.method == "POST":
@@ -610,6 +620,10 @@ def change_event_venue(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
 
+    if event.status == 'cancelled':
+        messages.error(request, "This event has been cancelled.")
+        return redirect('faculty_dashboard')
+
     if event.status != 'approved':
         messages.error(request, "Venue can only be changed for approved events.")
         return redirect('principal_approved_events')
@@ -844,3 +858,42 @@ def search_events(request):
         })
 
     return JsonResponse({"events": data})
+
+@login_required(login_url='/login/')
+def cancel_event(request, event_id):
+
+    event = get_object_or_404(Event, id=event_id)
+
+    # Only creator can cancel
+    if event.created_by != request.user:
+        return redirect('faculty_dashboard')
+
+    # Allow only pending or approved
+    if event.status not in ['pending', 'approved']:
+        messages.error(request, "This event cannot be cancelled.")
+        return redirect('faculty_dashboard')
+
+    # 🔴 Save old status BEFORE change
+    old_status = event.status
+
+    # Update status
+    event.status = 'cancelled'
+    event.save()
+
+    # 🔔 Notify ONLY if it was approved
+    if old_status == 'approved':
+        principal = User.objects.filter(role='principal').first()
+
+        if principal:
+            notify(
+                recipient=principal,
+                sender=request.user,
+                event=event,
+                type='cancelled',
+                message=f"Approved event '{event.title}' was cancelled by faculty."
+            )
+
+    # Message to faculty
+    messages.success(request, "Event cancelled successfully.")
+
+    return redirect('faculty_dashboard')
