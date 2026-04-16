@@ -9,6 +9,18 @@
                 <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
                 <a class="btn secondary" href="{% url 'change_event_venue' e.id %}">Change Venue</a>
             </div>
+            <form method="POST" action="{% url 'principal_event_action' e.id 'reject' %}">
+                {% csrf_token %}
+
+                <textarea name="remark"
+                        placeholder="Enter reason for rejection..."
+                        required
+                        class="form-control mb-2"></textarea>
+
+                <button type="submit" class="btn btn-danger btn-sm">
+                    Reject Event
+                </button>
+            </form>
         </article>
     {% empty %}
         <article class="event-card"><p class="muted" style="margin:0;">No approved events.</p></article>

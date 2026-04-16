@@ -201,10 +201,22 @@ def principal_event_action(request, event_id, action):
         event.principal_remark = ''
 
     elif action == 'reject':
-        remark = request.POST.get('remark')
-        event.status = 'rejected'
-        event.principal_remark = remark
 
+        # ✅ Allow rejection for both pending & approved
+        if event.status not in ['pending', 'approved']:
+            messages.error(request, "Only pending or approved events can be rejected.")
+            return redirect('principal_pending_events')
+
+        remark = request.POST.get('remark')
+
+        # ❗ Make reason mandatory
+        if not remark or remark.strip() == "":
+            messages.error(request, "Rejection reason is required.")
+            return redirect(request.META.get('HTTP_REFERER'))
+
+        event.status = 'rejected'
+        event.principal_remark = remark.strip()
+        
     event.save()
     
 
@@ -226,8 +238,7 @@ def principal_event_action(request, event_id, action):
             message=f"Your event '{event.title}' has been rejected."
         )
 
-    return redirect('principal_pending_events')
-
+    return redirect(request.META.get('HTTP_REFERER', 'principal_pending_events'))
 
   # adjust import if needed
 
