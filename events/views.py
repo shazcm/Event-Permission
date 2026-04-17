@@ -28,6 +28,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from accounts.utils import notify
 from accounts.models import User
+from accounts.models import Notification
 
 
 def _is_ajax_request(request):
@@ -882,6 +883,13 @@ def cancel_event(request, event_id):
 
     # 🔴 Save old status BEFORE change
     old_status = event.status
+
+    # ✅ Remove "submitted" notification if event was still pending
+    if old_status == 'pending':
+        Notification.objects.filter(
+            event=event,
+            type='submitted'
+        ).delete()
 
     # Update status
     event.status = 'cancelled'
