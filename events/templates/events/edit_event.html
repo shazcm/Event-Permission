@@ -1,0 +1,17 @@
+<h2>Edit Event</h2>
+
+{% if event.principal_remark %}
+    <div style="margin-bottom:10px; padding:10px; border:1px solid #f5c2c7; background:#f8d7da; border-radius:8px;">
+        <strong>Rejection Reason:</strong>
+        <p style="margin:5px 0 0;">{{ event.principal_remark }}</p>
+    </div>
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit" class="btn">
+        Update & Resubmit
+    </button>
+</form>

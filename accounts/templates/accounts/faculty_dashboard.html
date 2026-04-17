@@ -52,7 +52,7 @@
                     {% endif %}
 
                     <!-- ✅ Cancel Button (NEW) -->
-                    {% if e.status == 'pending' or e.status == 'approved' %}
+                    {% if e.status == 'pending' and e.end_date >= today or e.status == 'approved' and e.end_date >= today %}
                         <form method="POST" action="{% url 'cancel_event' e.id %}">
                             {% csrf_token %}
 
@@ -62,6 +62,11 @@
                                 Cancel Event
                             </button>
                         </form>
+                    {% endif %}
+                    {% if e.status == 'rejected' %}
+                        <a class="btn" href="{% url 'edit_event' e.id %}">
+                            Edit & Resubmit
+                        </a>
                     {% endif %}
 
                 </div>

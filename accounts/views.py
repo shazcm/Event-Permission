@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from .models import Notification
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 
 def _redirect_for_role(user):
@@ -75,6 +76,7 @@ def faculty_dashboard(request):
     unread_notifications = request.user.notifications.filter(is_read=False)
     unread_count = unread_notifications.count()
     recent_notifications = request.user.notifications.order_by('-created_at')[:5]
+    today = timezone.now().date()
 
     context = {
         'my_events': my_events,
@@ -85,6 +87,7 @@ def faculty_dashboard(request):
         'completed_count': my_events.filter(status='completed').count(),
         'verified_count': my_events.filter(status='verified').count(),
         'rejected_count': my_events.filter(status='rejected').count(),
+        'today': today, 
         'active_nav': 'faculty-dashboard',
         'unread_count': unread_count,
         'recent_notifications': recent_notifications,

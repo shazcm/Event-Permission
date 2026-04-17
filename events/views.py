@@ -859,10 +859,17 @@ def search_events(request):
 
     return JsonResponse({"events": data})
 
+from django.utils import timezone
+
 @login_required(login_url='/login/')
 def cancel_event(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
+
+    # ✅ BLOCK PAST EVENTS
+    if event.end_date < timezone.now().date():
+        messages.error(request, "Past events cannot be cancelled.")
+        return redirect('faculty_dashboard')
 
     # Only creator can cancel
     if event.created_by != request.user:
@@ -893,7 +900,55 @@ def cancel_event(request, event_id):
                 message=f"Approved event '{event.title}' was cancelled by faculty."
             )
 
-    # Message to faculty
     messages.success(request, "Event cancelled successfully.")
 
     return redirect('faculty_dashboard')
+
+@login_required(login_url='/login/')
+def edit_event(request, event_id):
+
+    event = get_object_or_404(Event, id=event_id)
+
+    # Only creator can edit
+    if event.created_by != request.user:
+        return redirect('faculty_dashboard')
+
+    # Allow only rejected events
+    if event.status != 'rejected':
+        messages.error(request, "Only rejected events can be edited.")
+        return redirect('faculty_dashboard')
+
+    if request.method == "POST":
+        form = EventForm(request.POST, instance=event, user=request.user)
+
+        if form.is_valid():
+            event = form.save(commit=False)
+
+            # 🔁 Reset status
+            event.status = 'pending'
+            event.principal_remark = ''
+
+            event.save()
+            form.save_m2m()
+
+            # 🔔 Notify principal again
+            principal = User.objects.filter(role='principal').first()
+            if principal:
+                notify(
+                    recipient=principal,
+                    sender=request.user,
+                    event=event,
+                    type='submitted',
+                    message=f"Event '{event.title}' has been resubmitted after changes."
+                )
+
+            messages.success(request, "Event updated and resubmitted.")
+            return redirect('faculty_dashboard')
+
+    else:
+        form = EventForm(instance=event, user=request.user)
+
+    return render(request, 'events/edit_event.html', {
+        'form': form,
+        'event': event
+    })
