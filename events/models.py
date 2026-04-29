@@ -13,7 +13,16 @@ class Venue(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+
+class Hashtag(models.Model):
+    name = models.CharField(max_length=30, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"#{self.name}"
+
+
 class Event(models.Model):
 
     CATEGORY_CHOICES = (
@@ -34,6 +43,7 @@ class Event(models.Model):
         ('pending', 'Pending Approval'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
         ('completed', 'Completed'),
         ('verified', 'Verified'),
     )
@@ -78,6 +88,10 @@ class Event(models.Model):
     )
 
     principal_remark = models.TextField(blank=True, null=True)
+    is_cancellation_requested = models.BooleanField(default=False)
+    cancellation_reason = models.TextField(blank=True, null=True)
+    cancellation_review_remark = models.TextField(blank=True, null=True)
+    cancellation_requested_at = models.DateTimeField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -87,6 +101,12 @@ class Event(models.Model):
         upload_to='attendance/',
         blank=True,
         null=True
+    )
+
+    hashtags = models.ManyToManyField(
+        Hashtag,
+        related_name='events',
+        blank=True
     )
 
 

@@ -6,44 +6,97 @@
 {% block page_subtitle %}Filter events by status, participation, and date range.{% endblock %}
 
 {% block content %}
-<section class="panel" style="margin-bottom:18px;">
-    <form method="get" data-ajax-list="#facultyFilterList" data-ajax-delay="300">
-        <div class="filters">
-            <div>
-                <label for="search">Search</label>
-                <input id="search" type="text" name="search" value="{{ request.GET.search }}" placeholder="Event title">
-            </div>
-            <div>
-                <label for="status">Status</label>
-                <select id="status" name="status">
-                    <option value="conducted" {% if selected_status == 'conducted' %}selected{% endif %}>Conducted Events</option>
-                    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pending</option>
-                    <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>Approved</option>
-                    <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>Completed (Unverified)</option>
-                    <option value="verified" {% if selected_status == 'verified' %}selected{% endif %}>Verified</option>
-                    <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Rejected</option>
-                </select>
-            </div>
-            <div>
-                <label for="participation">Participation</label>
-                <select id="participation" name="participation">
-                    <option value="">All</option>
-                    <option value="boys" {% if request.GET.participation == 'boys' %}selected{% endif %}>Boys</option>
-                    <option value="girls" {% if request.GET.participation == 'girls' %}selected{% endif %}>Girls</option>
-                    <option value="mixed" {% if request.GET.participation == 'mixed' %}selected{% endif %}>Mixed</option>
-                </select>
-            </div>
-            <div>
-                <label for="start_date">Start Date</label>
-                <input id="start_date" type="date" name="start_date" value="{{ request.GET.start_date }}">
-            </div>
-            <div>
-                <label for="end_date">End Date</label>
-                <input id="end_date" type="date" name="end_date" value="{{ request.GET.end_date }}">
+<section class="filter-card panel" style="margin-bottom:18px;">
+    <form method="get" data-ajax-list="#facultyFilterList" data-ajax-delay="260" class="event-search-form" data-filter-form>
+        <div class="search-hero {% if search_value %}is-active{% endif %}">
+            <label for="search">Search</label>
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input
+                    id="search"
+                    type="text"
+                    name="search"
+                    value="{{ search_value|default_if_none:'' }}"
+                    placeholder="Search events, hashtags (#tech), organizer..."
+                >
             </div>
         </div>
 
-        <button class="btn" type="submit">Search</button>
+        <div class="quick-chip-row" data-quick-row>
+            <input type="hidden" name="quick" value="{{ quick|default:'all' }}" data-quick-input>
+            <button type="button" class="quick-chip {% if quick == 'all' %}is-active{% endif %}" data-quick-value="all">All</button>
+            <button type="button" class="quick-chip {% if quick == 'completed' %}is-active{% endif %}" data-quick-value="completed">Completed</button>
+            <button type="button" class="quick-chip {% if quick == 'upcoming' %}is-active{% endif %}" data-quick-value="upcoming">Upcoming</button>
+            <button type="button" class="quick-chip {% if quick == 'verified' %}is-active{% endif %}" data-quick-value="verified">Verified</button>
+        </div>
+
+        <div class="filter-actions-row">
+            <button class="btn" type="submit">Search</button>
+            <a class="btn secondary" href="{% url 'faculty_filter_events' %}">Clear Filters</a>
+            <button type="button" class="btn secondary more-filter-toggle" data-toggle-advanced aria-expanded="false">
+                More Filters
+            </button>
+        </div>
+
+        <div class="advanced-filters {% if selected_status or selected_participation or start_date_value or end_date_value %}is-open{% endif %}" data-advanced-panel>
+            <div class="advanced-grid">
+                <div class="filter-field">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="conducted" {% if selected_status == 'conducted' %}selected{% endif %}>Conducted Events</option>
+                        <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>Approved</option>
+                        <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>Completed (Unverified)</option>
+                        <option value="verified" {% if selected_status == 'verified' %}selected{% endif %}>Verified</option>
+                        <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Rejected</option>
+                        <option value="cancelled" {% if selected_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label>Participation</label>
+                    <input type="hidden" name="participation" value="{{ selected_participation|default_if_none:'' }}" data-participation-hidden>
+                    <div class="chip-select-row" data-chip-single="participation">
+                        <button type="button" class="chip-select {% if not selected_participation %}is-active{% endif %}" data-value="">All</button>
+                        <button type="button" class="chip-select {% if selected_participation == 'boys' %}is-active{% endif %}" data-value="boys">Boys</button>
+                        <button type="button" class="chip-select {% if selected_participation == 'girls' %}is-active{% endif %}" data-value="girls">Girls</button>
+                        <button type="button" class="chip-select {% if selected_participation == 'mixed' %}is-active{% endif %}" data-value="mixed">Mixed</button>
+                    </div>
+                </div>
+
+                <div class="filter-field">
+                    <label>Date Range</label>
+                    <div class="date-range-box" data-date-range>
+                        <button type="button" class="date-range-trigger" data-date-trigger>
+                            <i class="fa-regular fa-calendar"></i>
+                            <span data-date-label>
+                                {% if start_date_value or end_date_value %}
+                                    {{ start_date_value|default:"..." }} to {{ end_date_value|default:"..." }}
+                                {% else %}
+                                    Select date range
+                                {% endif %}
+                            </span>
+                        </button>
+                        <div class="date-range-popover" data-date-popover>
+                            <label for="start_date">Start Date</label>
+                            <input id="start_date" type="date" name="start_date" value="{{ start_date_value|default_if_none:'' }}">
+                            <label for="end_date">End Date</label>
+                            <input id="end_date" type="date" name="end_date" value="{{ end_date_value|default_if_none:'' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if active_filter_tags %}
+            <div class="active-filter-tags">
+                {% for tag in active_filter_tags %}
+                    <a class="active-filter-tag" href="{% url 'faculty_filter_events' %}{% if tag.remove_query %}?{{ tag.remove_query }}{% endif %}">
+                        {{ tag.label }} <span aria-hidden="true">&times;</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
     </form>
 </section>
 

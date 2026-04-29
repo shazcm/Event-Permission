@@ -28,9 +28,28 @@
         <div class="meta-row"><i class="fa-solid fa-users"></i><span class="meta-label">Participation:</span><span class="meta-value">{{ event.participation_type|title }}</span></div>
         <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ event.budget }}</span></div>
     </div>
+    {% if event.hashtags.exists %}
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+            {% for tag in event.hashtags.all %}
+                {% if request.user.role == 'principal' %}
+                    <a class="chip" href="{% url 'view_all_events' %}?search=%23{{ tag.name }}">#{{ tag.name }}</a>
+                {% else %}
+                    <a class="chip" href="{% url 'faculty_filter_events' %}?search=%23{{ tag.name }}">#{{ tag.name }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
 
     {% if event.status == "rejected" and event.principal_remark %}
         <div class="reason-box">Rejection Reason: {{ event.principal_remark }}</div>
+    {% endif %}
+
+    {% if event.is_cancellation_requested and event.cancellation_reason %}
+        <div class="reason-box">Cancellation requested: {{ event.cancellation_reason }}</div>
+    {% endif %}
+
+    {% if event.cancellation_review_remark and not event.is_cancellation_requested %}
+        <div class="reason-box">Cancellation review remark: {{ event.cancellation_review_remark }}</div>
     {% endif %}
 </section>
 
@@ -70,6 +89,20 @@
             {% csrf_token %}
             <button type="submit" class="btn">Verify This Event</button>
         </form>
+    {% endif %}
+
+    {% if request.user.role == "faculty" and event.created_by_id == request.user.id %}
+        {% if event.status == "pending" or event.status == "approved" %}
+            {% if event.is_cancellation_requested %}
+                <span class="muted">Cancellation request is pending principal review.</span>
+            {% else %}
+                <form method="post" action="{% url 'faculty_request_cancel_event' event.id %}" style="width:100%;">
+                    {% csrf_token %}
+                    <input type="text" name="reason" placeholder="Reason for cancellation" required>
+                    <button type="submit" class="btn secondary">Request Cancellation</button>
+                </form>
+            {% endif %}
+        {% endif %}
     {% endif %}
 </section>
 {% endblock %}

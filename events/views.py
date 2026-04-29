@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import EventForm
-from .models import Event, Department
+from .models import Event, Department, Hashtag
 from django.utils import timezone
 from .forms import PostEventForm
 from django.db.models import Count
@@ -15,6 +15,7 @@ from datetime import datetime
 from django.utils import timezone
 from .models import EventPhoto
 from .forms import EventPhotoForm
+from .hashtags import parse_hashtags
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
@@ -24,7 +25,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER
 import os
-from django.contrib.auth.decorators import login_required
+import re
 from django.views.decorators.cache import never_cache
 from accounts.utils import notify
 from accounts.models import User
@@ -49,10 +50,81 @@ def _apply_event_search(queryset, query):
         Q(status__icontains=query) |
         Q(department__name__icontains=query) |
         Q(venue__name__icontains=query) |
+        Q(hashtags__name__icontains=query) |
         Q(created_by__username__icontains=query) |
         Q(created_by__first_name__icontains=query) |
         Q(created_by__last_name__icontains=query)
-    )
+    ).distinct()
+
+
+def _parse_search_and_hashtags(search_query, legacy_hashtag):
+    search_text = (search_query or "").strip()
+    legacy_text = (legacy_hashtag or "").strip()
+
+    hashtag_tokens = []
+    text_tokens = []
+
+    if search_text:
+        for token in re.split(r"[\s,]+", search_text):
+            if not token:
+                continue
+            if token.startswith("#"):
+                cleaned = token.lstrip("#").lower()
+                if cleaned:
+                    hashtag_tokens.append(cleaned)
+            else:
+                text_tokens.append(token)
+
+    if legacy_text:
+        for token in re.split(r"[\s,]+", legacy_text):
+            if not token:
+                continue
+            cleaned = token.lstrip("#").lower()
+            if cleaned:
+                hashtag_tokens.append(cleaned)
+
+    deduped_hashtags = list(dict.fromkeys(hashtag_tokens))
+    deduped_text = " ".join(text_tokens)
+    return deduped_text, deduped_hashtags
+
+
+def _parse_csv_values(raw_value):
+    if not raw_value:
+        return []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _normalize_filter_value(raw_value):
+    if raw_value is None:
+        return ""
+    cleaned = str(raw_value).strip()
+    if cleaned.lower() in {"none", "null"}:
+        return ""
+    return cleaned
+
+
+def _remove_query_param(query_string, key, value=None):
+    params = query_string.copy()
+    values = params.getlist(key)
+    if value is None or len(values) <= 1:
+        params.pop(key, None)
+        return params.urlencode()
+
+    params.setlist(key, [v for v in values if v != value])
+    if not params.getlist(key):
+        params.pop(key, None)
+    return params.urlencode()
+
+
+def _apply_quick_filter(events, quick_filter):
+    today = timezone.localdate()
+    if quick_filter == "completed":
+        return events.filter(status="completed")
+    if quick_filter == "verified":
+        return events.filter(status="verified")
+    if quick_filter == "upcoming":
+        return events.filter(start_date__gte=today)
+    return events
 
 
 
@@ -118,12 +190,16 @@ def principal_pending_events(request):
         return redirect('login')
 
     events = Event.objects.filter(status='pending').order_by('-created_at')
+    cancellation_events = Event.objects.filter(
+        is_cancellation_requested=True
+    ).order_by('-cancellation_requested_at', '-created_at')
 
     return render(
         request,
         'events/principal_pending.html',
         {
             'events': events,
+            'cancellation_events': cancellation_events,
             'active_nav': 'principal-pending',
         }
     )
@@ -181,6 +257,99 @@ def principal_event_action(request, event_id, action):
             type='rejected',
             message=f"Your event '{event.title}' has been rejected."
         )
+
+    return redirect('principal_pending_events')
+
+
+@login_required(login_url='/login/')
+def faculty_request_cancel_event(request, event_id):
+    if request.method != "POST":
+        return redirect('faculty_filter_events')
+
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    event = get_object_or_404(Event, id=event_id)
+
+    if event.created_by != request.user:
+        messages.error(request, "You can only request cancellation for your own events.")
+        return redirect('event_detail', event_id=event.id)
+
+    if event.status not in {'pending', 'approved'}:
+        messages.error(request, "Cancellation can only be requested for pending or approved events.")
+        return redirect('event_detail', event_id=event.id)
+
+    if event.is_cancellation_requested:
+        messages.info(request, "Cancellation request is already pending principal review.")
+        return redirect('event_detail', event_id=event.id)
+
+    reason = (request.POST.get('reason') or "").strip()
+    if not reason:
+        messages.error(request, "Please provide a reason for cancellation.")
+        return redirect('event_detail', event_id=event.id)
+
+    event.is_cancellation_requested = True
+    event.cancellation_reason = reason
+    event.cancellation_review_remark = ""
+    event.cancellation_requested_at = timezone.now()
+    event.save()
+
+    principal = User.objects.filter(role='principal').first()
+    if principal:
+        notify(
+            recipient=principal,
+            sender=request.user,
+            event=event,
+            type='cancel_requested',
+            message=f"Cancellation requested for event '{event.title}'."
+        )
+
+    messages.success(request, "Cancellation request sent to principal for approval.")
+    return redirect('event_detail', event_id=event.id)
+
+
+@login_required(login_url='/login/')
+def principal_cancel_event_action(request, event_id, action):
+    if request.method != "POST":
+        return redirect('principal_pending_events')
+
+    if request.user.role != 'principal':
+        return redirect('login')
+
+    event = get_object_or_404(Event, id=event_id)
+    if not event.is_cancellation_requested:
+        messages.error(request, "No pending cancellation request found for this event.")
+        return redirect('principal_pending_events')
+
+    remark = (request.POST.get('remark') or "").strip()
+
+    if action == 'approve':
+        event.status = 'cancelled'
+        event.is_cancellation_requested = False
+        event.cancellation_review_remark = remark
+        event.save()
+        notify(
+            recipient=event.created_by,
+            sender=request.user,
+            event=event,
+            type='cancel_approved',
+            message=f"Cancellation approved for event '{event.title}'."
+        )
+        messages.success(request, "Cancellation approved successfully.")
+    elif action == 'reject':
+        event.is_cancellation_requested = False
+        event.cancellation_review_remark = remark or "Cancellation request rejected."
+        event.save()
+        notify(
+            recipient=event.created_by,
+            sender=request.user,
+            event=event,
+            type='cancel_rejected',
+            message=f"Cancellation rejected for event '{event.title}'."
+        )
+        messages.success(request, "Cancellation request rejected.")
+    else:
+        messages.error(request, "Invalid cancellation action.")
 
     return redirect('principal_pending_events')
 
@@ -251,6 +420,16 @@ def post_event_upload(request, event_id):
         return redirect('faculty_dashboard')
 
     if request.method == "POST":
+        raw_hashtags = request.POST.get("hashtags", "")
+        try:
+            parsed_tags = parse_hashtags(raw_hashtags)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return render(request, 'events/post_upload.html', {
+                'event': event,
+                'active_nav': 'faculty-dashboard',
+                'hashtag_input': raw_hashtags,
+            })
 
         # ---- Handle Attendance Upload ----
         if request.FILES.get('attendance_file'):
@@ -281,9 +460,19 @@ def post_event_upload(request, event_id):
             event.report_text = request.POST.get("report_text")
             event.status = "completed"
             event.save()
+            hashtag_objects = [
+                Hashtag.objects.get_or_create(name=tag)[0]
+                for tag in parsed_tags
+            ]
+            event.hashtags.set(hashtag_objects)
             return redirect('faculty_dashboard')
 
         event.save()
+        hashtag_objects = [
+            Hashtag.objects.get_or_create(name=tag)[0]
+            for tag in parsed_tags
+        ]
+        event.hashtags.set(hashtag_objects)
         principal = User.objects.filter(role='principal').first()
 
         if principal:
@@ -298,6 +487,7 @@ def post_event_upload(request, event_id):
     return render(request, 'events/post_upload.html', {
         'event': event,
         'active_nav': 'faculty-dashboard',
+        'hashtag_input': " ".join(f"#{tag.name}" for tag in event.hashtags.order_by('name')),
     })
 
 @login_required(login_url='/login/')
@@ -376,33 +566,41 @@ def view_all_events(request):
     if request.user.role != 'principal':
         return redirect('login')
 
-    events = Event.objects.filter(
-        status__in=['completed', 'verified']
-    ).select_related('created_by', 'department', 'venue').order_by('-start_date')
+    events = Event.objects.all().select_related(
+        'created_by', 'department', 'venue'
+    ).order_by('-start_date')
 
-    # 🔎 Search
-    search = request.GET.get('search', '').strip()
-    events = _apply_event_search(events, search)
+    search = request.GET.get('search', '')
+    legacy_hashtag = request.GET.get('hashtag', '')
+    text_query, hashtag_filters = _parse_search_and_hashtags(search, legacy_hashtag)
+    events = _apply_event_search(events, text_query)
+    if hashtag_filters:
+        events = events.filter(hashtags__name__in=hashtag_filters).distinct()
 
+    quick = request.GET.get('quick', 'all')
+    if quick not in {'all', 'completed', 'verified', 'upcoming'}:
+        quick = 'all'
+    events = _apply_quick_filter(events, quick)
 
     # 🏢 Department filter
-    department = request.GET.get('department')
+    department = _normalize_filter_value(request.GET.get('department'))
     if department:
         events = events.filter(department_id=department)
 
     # 📂 Category filter
-    category = request.GET.get('category')
-    if category:
-        events = events.filter(category=category)
+    category = _normalize_filter_value(request.GET.get('category'))
+    category_values = _parse_csv_values(category)
+    if category_values:
+        events = events.filter(category__in=category_values)
 
     # 👦👧 Participation filter
-    participation = request.GET.get('participation')
+    participation = _normalize_filter_value(request.GET.get('participation'))
     if participation:
         events = events.filter(participation_type=participation)
 
     # 📅 Date range filter (UPDATED)
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    start_date = _normalize_filter_value(request.GET.get('start_date'))
+    end_date = _normalize_filter_value(request.GET.get('end_date'))
 
     if start_date and end_date:
         events = events.filter(
@@ -414,22 +612,60 @@ def view_all_events(request):
     elif end_date:
         events = events.filter(start_date__lte=end_date)
 
-    show_verified = request.GET.get('verified')
-
-    if show_verified == "1":
-        events = events.filter(status='verified')
-        show_verified = True
-    else:
-        show_verified = False
-
     departments = Department.objects.all()
 
     context = {
         'events': events,
         'departments': departments,
-        'show_verified': show_verified,
+        'quick': quick,
+        'selected_categories': category_values,
+        'selected_participation': participation,
+        'selected_department': department,
+        'search_value': _normalize_filter_value(search),
+        'start_date_value': start_date,
+        'end_date_value': end_date,
+        'active_filter_tags': [],
+        'current_query': request.GET.copy(),
         'active_nav': 'principal-all',
     }
+
+    active_tags = []
+    current_query = request.GET.copy()
+    if search.strip():
+        active_tags.append({
+            'label': f"Search: {search.strip()}",
+            'remove_query': _remove_query_param(current_query, 'search'),
+        })
+    if quick != 'all':
+        active_tags.append({
+            'label': f"Quick: {quick.title()}",
+            'remove_query': _remove_query_param(current_query, 'quick'),
+        })
+    for cat in category_values:
+        active_tags.append({
+            'label': f"Category: {cat.title()}",
+            'remove_query': _remove_query_param(current_query, 'category'),
+        })
+    if department:
+        dept_name = Department.objects.filter(id=department).values_list('name', flat=True).first()
+        active_tags.append({
+            'label': f"Department: {dept_name or department}",
+            'remove_query': _remove_query_param(current_query, 'department'),
+        })
+    if participation:
+        active_tags.append({
+            'label': f"Participation: {participation.title()}",
+            'remove_query': _remove_query_param(current_query, 'participation'),
+        })
+    if start_date or end_date:
+        active_tags.append({
+            'label': f"Date: {start_date or '...'} to {end_date or '...'}",
+            'remove_query': _remove_query_param(
+                _remove_query_param(current_query, 'start_date'),
+                'end_date'
+            ),
+        })
+    context['active_filter_tags'] = active_tags
 
     if _is_ajax_request(request):
         return render(request, 'events/partials/view_all_events_list.html', context)
@@ -472,9 +708,17 @@ def faculty_filter_events(request):
 
     events = events.select_related('created_by', 'department', 'venue').order_by('-start_date')
 
-    # 🔎 Search
-    search = request.GET.get('search', '').strip()
-    events = _apply_event_search(events, search)
+    search = request.GET.get('search', '')
+    legacy_hashtag = request.GET.get('hashtag', '')
+    text_query, hashtag_filters = _parse_search_and_hashtags(search, legacy_hashtag)
+    events = _apply_event_search(events, text_query)
+    if hashtag_filters:
+        events = events.filter(hashtags__name__in=hashtag_filters).distinct()
+
+    quick = request.GET.get('quick', 'all')
+    if quick not in {'all', 'completed', 'verified', 'upcoming'}:
+        quick = 'all'
+    events = _apply_quick_filter(events, quick)
 
     # 📌 Status filter
     status = request.GET.get('status')
@@ -491,13 +735,13 @@ def faculty_filter_events(request):
         selected_status = status
 
     # 👥 Participation filter
-    participation = request.GET.get('participation')
+    participation = _normalize_filter_value(request.GET.get('participation'))
     if participation:
         events = events.filter(participation_type=participation)
 
     # 📅 Date range filter (UPDATED)
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    start_date = _normalize_filter_value(request.GET.get('start_date'))
+    end_date = _normalize_filter_value(request.GET.get('end_date'))
 
     if start_date and end_date:
         events = events.filter(
@@ -513,8 +757,47 @@ def faculty_filter_events(request):
         'events': events,
         'page_title': page_title,
         'selected_status': selected_status,
+        'quick': quick,
+        'selected_participation': participation,
+        'search_value': _normalize_filter_value(search),
+        'start_date_value': start_date,
+        'end_date_value': end_date,
+        'active_filter_tags': [],
+        'current_query': request.GET.copy(),
         'active_nav': 'faculty-filter',
     }
+
+    active_tags = []
+    current_query = request.GET.copy()
+    if search.strip():
+        active_tags.append({
+            'label': f"Search: {search.strip()}",
+            'remove_query': _remove_query_param(current_query, 'search'),
+        })
+    if quick != 'all':
+        active_tags.append({
+            'label': f"Quick: {quick.title()}",
+            'remove_query': _remove_query_param(current_query, 'quick'),
+        })
+    if status and status != "conducted":
+        active_tags.append({
+            'label': f"Status: {status.title()}",
+            'remove_query': _remove_query_param(current_query, 'status'),
+        })
+    if participation:
+        active_tags.append({
+            'label': f"Participation: {participation.title()}",
+            'remove_query': _remove_query_param(current_query, 'participation'),
+        })
+    if start_date or end_date:
+        active_tags.append({
+            'label': f"Date: {start_date or '...'} to {end_date or '...'}",
+            'remove_query': _remove_query_param(
+                _remove_query_param(current_query, 'start_date'),
+                'end_date'
+            ),
+        })
+    context['active_filter_tags'] = active_tags
 
     if _is_ajax_request(request):
         return render(request, 'events/partials/faculty_filter_list.html', context)
@@ -770,13 +1053,18 @@ def download_detailed_report(request, event_id):
 @login_required(login_url='/login/')
 def search_events(request):
     query = request.GET.get('q', '')
+    hashtag = request.GET.get('hashtag', '').strip().lstrip('#').lower()
 
     events = Event.objects.filter(
         Q(title__icontains=query) |
         Q(category__icontains=query) |
         Q(department__name__icontains=query) |
-        Q(venue__name__icontains=query)
-    ).select_related('department').order_by('-start_date')
+        Q(venue__name__icontains=query) |
+        Q(hashtags__name__icontains=query)
+    ).select_related('department').order_by('-start_date').distinct()
+
+    if hashtag:
+        events = events.filter(hashtags__name=hashtag)
 
     data = []
     for event in events:
@@ -786,6 +1074,7 @@ def search_events(request):
             "category": event.category,
             "department": event.department.name if event.department else "General",
             "status": event.status,
+            "hashtags": [tag.name for tag in event.hashtags.order_by('name')],
         })
 
     return JsonResponse({"events": data})

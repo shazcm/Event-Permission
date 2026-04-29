@@ -21,6 +21,18 @@
     <div class="meta-row"><i class="fa-solid fa-indian-rupee-sign"></i><span class="meta-label">Budget:</span><span class="meta-value">{{ event.budget }}</span></div>
 </div>
 
+{% if event.hashtags.exists %}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+        {% for tag in event.hashtags.all %}
+            {% if request.user.role == 'principal' %}
+                <a class="chip" href="{% url 'view_all_events' %}?search=%23{{ tag.name }}">#{{ tag.name }}</a>
+            {% else %}
+                <a class="chip" href="{% url 'faculty_filter_events' %}?search=%23{{ tag.name }}">#{{ tag.name }}</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}
+
 {% if show_rejection_reason %}
     <div class="reason-box">
         Rejection Reason: {{ event.principal_remark|default:"No remark provided." }}

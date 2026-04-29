@@ -15,6 +15,9 @@
         <label for="images">Upload Photos (Max 5)</label>
         <input id="images" type="file" name="images" multiple>
 
+        <label for="hashtags">Hashtags</label>
+        <input id="hashtags" type="text" name="hashtags" value="{{ hashtag_input }}" placeholder="#technical #cultural (max 15)">
+
         <button class="btn" type="submit" name="generate_report">Generate Report</button>
 
         {% if event.report_text %}

@@ -11,6 +11,12 @@ urlpatterns = [
     path('principal/action/<int:event_id>/<str:action>/',
          views.principal_event_action,
          name='principal_event_action'),
+    path('faculty/cancel/<int:event_id>/',
+         views.faculty_request_cancel_event,
+         name='faculty_request_cancel_event'),
+    path('principal/cancel-action/<int:event_id>/<str:action>/',
+         views.principal_cancel_event_action,
+         name='principal_cancel_event_action'),
 
     path('post-upload/<int:event_id>/',
         views.post_event_upload,

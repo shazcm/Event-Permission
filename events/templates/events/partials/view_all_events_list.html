@@ -1,4 +1,4 @@
-<div class="muted" style="margin-bottom: 10px;">Showing {{ events|length }} event{{ events|pluralize }}</div>
+<div class="filter-results-meta">Showing {{ events|length }} event{{ events|pluralize }}</div>
 
 <section class="event-grid">
     {% for e in events %}
@@ -10,8 +10,9 @@
             </div>
         </article>
     {% empty %}
-        <article class="event-card">
-            <p class="muted" style="margin:0;">No events found.</p>
+        <article class="no-results">
+            <p style="margin:0 0 8px 0;font-weight:700;">No results found</p>
+            <p class="muted" style="margin:0;">Try adjusting search text or clearing some filters.</p>
         </article>
     {% endfor %}
 </section>

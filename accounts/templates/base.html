@@ -208,33 +208,6 @@
             font-size: 1.05rem;
         }
 
-        .dashboard-navbar {
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-            min-height: 56px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: #ffffff;
-            color: var(--text);
-            display: flex;
-            box-shadow: var(--shadow);
-        }
-
-        .navbar-left,
-        .navbar-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .navbar-label {
-            font-size: .95rem;
-            color: var(--text-soft);
-            font-weight: 700;
-        }
-
         .navbar-menu-toggle {
             display: none;
             border: 1px solid var(--line);
@@ -306,27 +279,29 @@
             font-size: .9rem;
         }
 
-        .navbar-logout {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--line);
-            background: #fff;
-            color: var(--text);
-            font-weight: 700;
-            font-size: .9rem;
-        }
-
-        .navbar-logout:hover,
         .nav-icon-btn:hover,
         .navbar-menu-toggle:hover {
             background: var(--surface-muted);
         }
 
         .page-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
             margin-bottom: 16px;
+        }
+
+        .page-head-main {
+            min-width: 0;
+        }
+
+        .page-head-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            flex-shrink: 0;
         }
 
         .page-title {
@@ -399,6 +374,7 @@
         .chip.pending { background: #f7e7d4; color: #c57111; }
         .chip.approved { background: #daf4ea; color: #0f9b72; }
         .chip.rejected { background: #fbe0e5; color: var(--danger); }
+        .chip.cancelled { background: #edeef2; color: #4d5561; }
         .chip.verified { background: #d5f2df; color: #138a4f; }
         .chip.completed { background: #f8ebc7; color: #8b6807; }
 
@@ -444,6 +420,224 @@
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 10px;
             margin-bottom: 12px;
+        }
+
+        .filter-card {
+            box-shadow: 0 10px 20px rgba(26, 21, 16, 0.04);
+        }
+
+        .event-search-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            column-gap: 14px;
+            row-gap: 12px;
+        }
+
+        .search-hero,
+        .advanced-filters,
+        .active-filter-tags {
+            grid-column: 1 / -1;
+        }
+
+        .search-hero label {
+            display: inline-block;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .search-input-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-input-wrap i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ab7a56;
+        }
+
+        .search-input-wrap input {
+            padding-left: 36px;
+            margin-bottom: 0;
+            height: 44px;
+            border-radius: 12px;
+        }
+
+        .search-hero.is-active .search-input-wrap input {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(206, 111, 9, 0.15);
+        }
+
+        .quick-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .quick-chip {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            border-radius: 999px;
+            min-height: 36px;
+            padding: 7px 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-chip:hover {
+            border-color: #d9c4ac;
+            transform: translateY(-1px);
+        }
+
+        .quick-chip.is-active {
+            background: #faefe3;
+            border-color: #dfb17e;
+            color: #9b5414;
+        }
+
+        .filter-actions-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .filter-actions-row .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            padding: 7px 12px;
+            font: inherit;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .advanced-filters {
+            border-top: 1px solid #ece2d8;
+            padding-top: 12px;
+            display: none;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: all 0.2s ease;
+        }
+
+        .advanced-filters.is-open {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .advanced-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .chip-select-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .chip-select {
+            border: 1px solid #dfd5ca;
+            background: #fff;
+            color: var(--text);
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-size: 0.87rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .chip-select.is-active {
+            border-color: #d8a873;
+            background: #fff5e9;
+            color: #975016;
+        }
+
+        .date-range-box {
+            position: relative;
+        }
+
+        .date-range-trigger {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            color: var(--text);
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-start;
+            padding: 10px 12px;
+            cursor: pointer;
+        }
+
+        .date-range-popover {
+            position: absolute;
+            z-index: 15;
+            top: calc(100% + 8px);
+            left: 0;
+            width: min(290px, 100%);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 10px 26px rgba(21, 13, 5, 0.12);
+            padding: 10px;
+            display: none;
+        }
+
+        .date-range-popover.is-open {
+            display: block;
+        }
+
+        .date-range-popover label {
+            margin-bottom: 2px;
+            display: inline-block;
+            font-size: 0.86rem;
+            color: #7f6650;
+        }
+
+        .active-filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .active-filter-tag {
+            border: 1px solid #dfd0bf;
+            border-radius: 999px;
+            padding: 5px 10px;
+            background: #fff9f3;
+            color: #8e4d16;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }
+
+        .filter-results-meta {
+            margin-bottom: 10px;
+            color: #6e7f93;
+            font-weight: 600;
+        }
+
+        .no-results {
+            border: 1px dashed #d8c9b9;
+            border-radius: 12px;
+            padding: 18px;
+            text-align: center;
+            background: #fdf9f5;
         }
 
         .table-wrap {
@@ -688,6 +882,10 @@
             .event-grid {
                 grid-template-columns: 1fr;
             }
+
+            .advanced-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 900px) {
@@ -749,13 +947,32 @@
                 display: inline-grid;
             }
 
-            .navbar-label {
-                display: none;
+            .page-head {
+                flex-wrap: wrap;
+                align-items: flex-start;
             }
 
-            .dashboard-navbar {
-                padding: 8px 10px;
-                min-height: 52px;
+            .page-head-actions {
+                margin-left: auto;
+            }
+
+            .event-search-form {
+                grid-template-columns: 1fr;
+                row-gap: 11px;
+            }
+
+            .quick-chip-row,
+            .filter-actions-row {
+                grid-column: 1 / -1;
+                justify-content: flex-start;
+            }
+
+            .filter-actions-row .btn {
+                width: 100%;
+            }
+
+            .quick-chip-row {
+                gap: 6px;
             }
         }
     </style>
@@ -802,28 +1019,27 @@
                         <li><a class="nav-link {% if active_nav == 'faculty-filter' or request.resolver_match.url_name == 'faculty_filter_events' %}active{% endif %}" href="{% url 'faculty_filter_events' %}" title="All Related Events"><i class="fa-solid fa-filter"></i><span class="nav-text">All Related Events</span></a></li>
                     {% endif %}
                 </ul>
+                <div class="sidebar-foot">
+                    <a class="nav-link" href="{% url 'logout' %}">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="nav-text">Logout</span>
+                    </a>
+                </div>
             </aside>
             <div class="overlay" id="navOverlay"></div>
         {% endif %}
 
         <main class="main">
-            {% if request.user.is_authenticated %}
-                <nav class="dashboard-navbar">
-                    <div class="navbar-left">
+            <header class="page-head">
+                <div class="page-head-main">
+                    <h1 class="page-title">{% block page_title %}College Event System{% endblock %}</h1>
+                    <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+                </div>
+                {% if request.user.is_authenticated %}
+                    <div class="page-head-actions">
                         <button class="navbar-menu-toggle" id="menuToggle" type="button" aria-label="Open Menu">
                             <i class="fa-solid fa-bars"></i>
                         </button>
-                        <span class="navbar-label">
-                            {% if request.user.role == "principal" %}
-                                Principal Dashboard
-                            {% elif request.user.role == "faculty" %}
-                                Faculty Dashboard
-                            {% else %}
-                                Dashboard
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="navbar-right">
                         <div style="position:relative;">
                             <button class="nav-icon-btn" id="notifToggle" type="button" aria-label="Notifications">
                                 <i class="fa-regular fa-bell"></i>
@@ -843,18 +1059,8 @@
                                 {% endfor %}
                             </div>
                         </div>
-
-                        <a class="navbar-logout" href="{% url 'logout' %}">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            Logout
-                        </a>
                     </div>
-                </nav>
-            {% endif %}
-
-            <header class="page-head">
-                <h1 class="page-title">{% block page_title %}College Event System{% endblock %}</h1>
-                <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+                {% endif %}
             </header>
 
             {% if messages %}
@@ -919,6 +1125,121 @@
                 }
             });
         }
+
+        (function () {
+            const filterForms = document.querySelectorAll("form[data-filter-form]");
+            if (!filterForms.length) return;
+
+            filterForms.forEach(function (form) {
+                const triggerFieldChange = function (field) {
+                    if (field) {
+                        field.dispatchEvent(new Event("change", { bubbles: true }));
+                    }
+                };
+
+                const quickInput = form.querySelector("[data-quick-input]");
+                const quickButtons = form.querySelectorAll("[data-quick-value]");
+                const advancedPanel = form.querySelector("[data-advanced-panel]");
+                const advancedToggle = form.querySelector("[data-toggle-advanced]");
+                const searchInput = form.querySelector("input[name='search']");
+                const searchHero = form.querySelector(".search-hero");
+
+                if (advancedPanel && advancedToggle) {
+                    const isOpen = advancedPanel.classList.contains("is-open");
+                    advancedToggle.setAttribute("aria-expanded", String(isOpen));
+                    advancedToggle.addEventListener("click", function () {
+                        const nowOpen = advancedPanel.classList.toggle("is-open");
+                        advancedToggle.setAttribute("aria-expanded", String(nowOpen));
+                    });
+                }
+
+                if (searchInput && searchHero) {
+                    const updateSearchActive = function () {
+                        searchHero.classList.toggle("is-active", !!searchInput.value.trim());
+                    };
+                    updateSearchActive();
+                    searchInput.addEventListener("input", updateSearchActive);
+                }
+
+                quickButtons.forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        const value = btn.getAttribute("data-quick-value");
+                        if (quickInput) quickInput.value = value;
+                        quickButtons.forEach(function (chip) {
+                            chip.classList.toggle("is-active", chip === btn);
+                        });
+                        triggerFieldChange(quickInput);
+                    });
+                });
+
+                form.querySelectorAll("[data-chip-single]").forEach(function (group) {
+                    const hidden = form.querySelector("[data-" + group.getAttribute("data-chip-single") + "-hidden]");
+                    group.querySelectorAll("[data-value]").forEach(function (chip) {
+                        chip.addEventListener("click", function () {
+                            const val = chip.getAttribute("data-value");
+                            group.querySelectorAll("[data-value]").forEach(function (c) {
+                                c.classList.toggle("is-active", c === chip);
+                            });
+                            if (hidden) hidden.value = val;
+                            triggerFieldChange(hidden);
+                        });
+                    });
+                });
+
+                form.querySelectorAll("[data-chip-multi]").forEach(function (group) {
+                    const targetName = group.getAttribute("data-chip-multi");
+                    const hidden = form.querySelector("[data-" + targetName + "-hidden]");
+                    const syncValue = function () {
+                        const active = Array.from(group.querySelectorAll(".chip-select.is-active"))
+                            .map(function (el) {
+                                return el.getAttribute("data-value");
+                            });
+                        if (hidden) hidden.value = active.join(",");
+                    };
+                    group.querySelectorAll("[data-value]").forEach(function (chip) {
+                        chip.addEventListener("click", function () {
+                            chip.classList.toggle("is-active");
+                            syncValue();
+                            triggerFieldChange(hidden);
+                        });
+                    });
+                    syncValue();
+                });
+
+                form.querySelectorAll("[data-date-range]").forEach(function (box) {
+                    const trigger = box.querySelector("[data-date-trigger]");
+                    const popover = box.querySelector("[data-date-popover]");
+                    const start = box.querySelector("input[name='start_date']");
+                    const end = box.querySelector("input[name='end_date']");
+                    const label = box.querySelector("[data-date-label]");
+                    if (!trigger || !popover || !label) return;
+
+                    const updateLabel = function () {
+                        const startVal = start && start.value ? start.value : "...";
+                        const endVal = end && end.value ? end.value : "...";
+                        if ((start && start.value) || (end && end.value)) {
+                            label.textContent = startVal + " to " + endVal;
+                        } else {
+                            label.textContent = "Select date range";
+                        }
+                    };
+
+                    trigger.addEventListener("click", function () {
+                        popover.classList.toggle("is-open");
+                    });
+                    [start, end].forEach(function (field) {
+                        if (!field) return;
+                        field.addEventListener("change", updateLabel);
+                    });
+                    document.addEventListener("click", function (event) {
+                        if (!box.contains(event.target)) {
+                            popover.classList.remove("is-open");
+                        }
+                    });
+                    updateLabel();
+                });
+            });
+        })();
 
         (function () {
             const ajaxForms = document.querySelectorAll("form[data-ajax-list]");
