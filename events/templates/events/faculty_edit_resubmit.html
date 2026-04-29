@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Edit & Resubmit{% endblock %}
+{% block page_title %}Edit & Resubmit Event{% endblock %}
+{% block page_subtitle %}Update rejected event details and send again for approval.{% endblock %}
+
+{% block content %}
+<section class="panel" style="max-width: 900px;">
+    <form method="post" id="event-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn" type="submit">Save and Resubmit</button>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #event-form p {
+        margin: 0 0 10px;
+    }
+    #event-form label {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}

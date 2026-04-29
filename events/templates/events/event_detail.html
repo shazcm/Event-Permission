@@ -44,13 +44,6 @@
         <div class="reason-box">Rejection Reason: {{ event.principal_remark }}</div>
     {% endif %}
 
-    {% if event.is_cancellation_requested and event.cancellation_reason %}
-        <div class="reason-box">Cancellation requested: {{ event.cancellation_reason }}</div>
-    {% endif %}
-
-    {% if event.cancellation_review_remark and not event.is_cancellation_requested %}
-        <div class="reason-box">Cancellation review remark: {{ event.cancellation_review_remark }}</div>
-    {% endif %}
 </section>
 
 <section class="panel" style="margin-bottom:14px;">
@@ -81,7 +74,9 @@
 </section>
 
 <section class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <a class="btn secondary" href="{% url 'download_detailed_report' event.id %}">Download Detailed Report</a>
+    {% if event.status == "verified" %}
+        <a class="btn secondary" href="{% url 'download_detailed_report' event.id %}">Download Detailed Report</a>
+    {% endif %}
 
     {% if request.user.role == "principal" and event.status == "completed" %}
         <span class="muted">Final verification is done from this page.</span>
@@ -93,15 +88,13 @@
 
     {% if request.user.role == "faculty" and event.created_by_id == request.user.id %}
         {% if event.status == "pending" or event.status == "approved" %}
-            {% if event.is_cancellation_requested %}
-                <span class="muted">Cancellation request is pending principal review.</span>
-            {% else %}
-                <form method="post" action="{% url 'faculty_request_cancel_event' event.id %}" style="width:100%;">
-                    {% csrf_token %}
-                    <input type="text" name="reason" placeholder="Reason for cancellation" required>
-                    <button type="submit" class="btn secondary">Request Cancellation</button>
-                </form>
-            {% endif %}
+            <form method="post" action="{% url 'faculty_request_cancel_event' event.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn danger">Cancel Event</button>
+            </form>
+        {% endif %}
+        {% if event.status == "rejected" %}
+            <a class="btn" href="{% url 'faculty_edit_resubmit_event' event.id %}">Edit & Resubmit</a>
         {% endif %}
     {% endif %}
 </section>

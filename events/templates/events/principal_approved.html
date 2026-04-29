@@ -7,4 +7,63 @@
 
 {% block content %}
 {% include "events/partials/principal_approved_list.html" %}
+
+<section id="rejectModal" class="panel" style="display:none;max-width:520px;position:fixed;z-index:120;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);box-shadow:0 20px 48px rgba(0,0,0,.25);">
+    <h3 style="margin-top:0;">Reject Approved Event</h3>
+    <p class="muted" id="rejectModalTitle" style="margin:0 0 10px 0;"></p>
+    <form id="rejectModalForm" method="post">
+        {% csrf_token %}
+        <label for="rejectRemark">Rejection Reason</label>
+        <textarea id="rejectRemark" name="remark" required placeholder="Enter reason for rejection"></textarea>
+        <div class="action-row" style="margin-top:8px;">
+            <button type="button" class="btn secondary" id="rejectCancelBtn">Cancel</button>
+            <button type="submit" class="btn danger" id="rejectSubmitBtn" disabled>Reject Event</button>
+        </div>
+    </form>
+</section>
+<div id="rejectModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:110;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const modal = document.getElementById("rejectModal");
+    const overlay = document.getElementById("rejectModalOverlay");
+    const form = document.getElementById("rejectModalForm");
+    const title = document.getElementById("rejectModalTitle");
+    const remark = document.getElementById("rejectRemark");
+    const cancelBtn = document.getElementById("rejectCancelBtn");
+    const submitBtn = document.getElementById("rejectSubmitBtn");
+
+    if (!modal || !overlay || !form) return;
+
+    const openModal = function (rejectUrl, eventTitle) {
+        form.action = rejectUrl;
+        title.textContent = `Event: ${eventTitle}`;
+        remark.value = "";
+        submitBtn.disabled = true;
+        overlay.style.display = "block";
+        modal.style.display = "block";
+        setTimeout(function () { remark.focus(); }, 0);
+    };
+
+    const closeModal = function () {
+        overlay.style.display = "none";
+        modal.style.display = "none";
+    };
+
+    document.querySelectorAll("[data-reject-trigger]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            openModal(btn.getAttribute("data-reject-url"), btn.getAttribute("data-event-title"));
+        });
+    });
+
+    remark.addEventListener("input", function () {
+        submitBtn.disabled = !remark.value.trim();
+    });
+
+    cancelBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", closeModal);
+});
+</script>
 {% endblock %}

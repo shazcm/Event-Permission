@@ -394,6 +394,11 @@
             color: var(--text);
         }
 
+        .btn.danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
         form {
             margin: 0;
         }
@@ -691,6 +696,8 @@
             background: var(--surface);
             padding: 16px;
             box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
         }
 
         .event-head {
@@ -754,15 +761,37 @@
         }
 
         .action-row {
-            margin-top: 12px;
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            margin-top: auto;
+            padding-top: 12px;
         }
 
         .action-row .btn {
             flex: 1;
+            min-height: 36px;
+            padding: 6px 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             text-align: center;
+            text-decoration: none;
+            font: inherit;
+            white-space: nowrap;
+        }
+
+        .action-row form {
+            flex: 1;
+        }
+
+        .action-row form .btn {
+            width: 100%;
+        }
+
+        .event-card > .reason-box:last-of-type,
+        .event-card > div[style*="margin-top:10px"] {
+            margin-bottom: 0;
         }
 
         .ajax-loading {
@@ -1016,7 +1045,10 @@
                     {% elif request.user.role == "faculty" %}
                         <li><a class="nav-link {% if active_nav == 'faculty-dashboard' or request.resolver_match.url_name == 'faculty_dashboard' %}active{% endif %}" href="{% url 'faculty_dashboard' %}" title="Dashboard"><i class="fa-solid fa-table-columns"></i><span class="nav-text">Dashboard</span></a></li>
                         <li><a class="nav-link {% if active_nav == 'faculty-create' or request.resolver_match.url_name == 'create_event' %}active{% endif %}" href="{% url 'create_event' %}" title="Create Event"><i class="fa-solid fa-plus"></i><span class="nav-text">Create Event</span></a></li>
-                        <li><a class="nav-link {% if active_nav == 'faculty-filter' or request.resolver_match.url_name == 'faculty_filter_events' %}active{% endif %}" href="{% url 'faculty_filter_events' %}" title="All Related Events"><i class="fa-solid fa-filter"></i><span class="nav-text">All Related Events</span></a></li>
+                        <li><a class="nav-link {% if active_nav == 'faculty-post-upload' or request.resolver_match.url_name == 'faculty_upload_post_event_data' %}active{% endif %}" href="{% url 'faculty_upload_post_event_data' %}" title="Upload Post-Event Data"><i class="fa-solid fa-upload"></i><span class="nav-text">Upload Post-Event Data</span></a></li>
+                        <li><a class="nav-link {% if active_nav == 'faculty-approved' or request.resolver_match.url_name == 'faculty_approved_events' %}active{% endif %}" href="{% url 'faculty_approved_events' %}" title="Approved Events"><i class="fa-regular fa-circle-check"></i><span class="nav-text">Approved Events</span></a></li>
+                        <li><a class="nav-link {% if active_nav == 'faculty-rejected' or request.resolver_match.url_name == 'faculty_rejected_events' %}active{% endif %}" href="{% url 'faculty_rejected_events' %}" title="Rejected Events"><i class="fa-regular fa-circle-xmark"></i><span class="nav-text">Rejected Events</span></a></li>
+                        <li><a class="nav-link {% if active_nav == 'faculty-filter' or request.resolver_match.url_name == 'faculty_filter_events' %}active{% endif %}" href="{% url 'faculty_filter_events' %}" title="All Events"><i class="fa-solid fa-filter"></i><span class="nav-text">All Events</span></a></li>
                     {% endif %}
                 </ul>
                 <div class="sidebar-foot">

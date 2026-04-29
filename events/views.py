@@ -190,16 +190,12 @@ def principal_pending_events(request):
         return redirect('login')
 
     events = Event.objects.filter(status='pending').order_by('-created_at')
-    cancellation_events = Event.objects.filter(
-        is_cancellation_requested=True
-    ).order_by('-cancellation_requested_at', '-created_at')
 
     return render(
         request,
         'events/principal_pending.html',
         {
             'events': events,
-            'cancellation_events': cancellation_events,
             'active_nav': 'principal-pending',
         }
     )
@@ -213,6 +209,9 @@ def principal_event_action(request, event_id, action):
     event = get_object_or_404(Event, id=event_id)
 
     if action == 'approve':
+        if event.status != 'pending':
+            messages.error(request, "Only pending events can be approved.")
+            return redirect('principal_pending_events')
 
         # 🔴 Check for overlapping approved events (exclude itself)
         conflict_exists = Event.objects.filter(
@@ -233,7 +232,13 @@ def principal_event_action(request, event_id, action):
         event.principal_remark = ''
 
     elif action == 'reject':
+        if event.status not in {'pending', 'approved'}:
+            messages.error(request, "Only pending or approved events can be rejected.")
+            return redirect('principal_pending_events')
         remark = request.POST.get('remark')
+        if not remark:
+            messages.error(request, "Reason for rejection is required.")
+            return redirect('principal_pending_events')
         event.status = 'rejected'
         event.principal_remark = remark
 
@@ -276,22 +281,14 @@ def faculty_request_cancel_event(request, event_id):
         return redirect('event_detail', event_id=event.id)
 
     if event.status not in {'pending', 'approved'}:
-        messages.error(request, "Cancellation can only be requested for pending or approved events.")
+        messages.error(request, "Cancellation is allowed only for pending or approved events.")
         return redirect('event_detail', event_id=event.id)
 
-    if event.is_cancellation_requested:
-        messages.info(request, "Cancellation request is already pending principal review.")
-        return redirect('event_detail', event_id=event.id)
-
-    reason = (request.POST.get('reason') or "").strip()
-    if not reason:
-        messages.error(request, "Please provide a reason for cancellation.")
-        return redirect('event_detail', event_id=event.id)
-
-    event.is_cancellation_requested = True
-    event.cancellation_reason = reason
+    event.status = 'cancelled'
+    event.is_cancellation_requested = False
+    event.cancellation_reason = ""
     event.cancellation_review_remark = ""
-    event.cancellation_requested_at = timezone.now()
+    event.cancellation_requested_at = None
     event.save()
 
     principal = User.objects.filter(role='principal').first()
@@ -301,57 +298,49 @@ def faculty_request_cancel_event(request, event_id):
             sender=request.user,
             event=event,
             type='cancel_requested',
-            message=f"Cancellation requested for event '{event.title}'."
+            message=f"Event '{event.title}' was cancelled by faculty."
         )
 
-    messages.success(request, "Cancellation request sent to principal for approval.")
+    messages.success(request, "Event cancelled successfully.")
     return redirect('event_detail', event_id=event.id)
 
 
 @login_required(login_url='/login/')
 def principal_cancel_event_action(request, event_id, action):
+    messages.error(request, "Cancellation approval flow is disabled.")
+    return redirect('principal_pending_events')
+
+
+@login_required(login_url='/login/')
+def principal_reject_approved_event(request, event_id):
     if request.method != "POST":
-        return redirect('principal_pending_events')
+        return redirect('principal_approved_events')
 
     if request.user.role != 'principal':
         return redirect('login')
 
     event = get_object_or_404(Event, id=event_id)
-    if not event.is_cancellation_requested:
-        messages.error(request, "No pending cancellation request found for this event.")
-        return redirect('principal_pending_events')
+    if event.status != 'approved':
+        messages.error(request, "Only approved events can be rejected from this screen.")
+        return redirect('principal_approved_events')
 
     remark = (request.POST.get('remark') or "").strip()
+    if not remark:
+        messages.error(request, "Reason for rejection is required.")
+        return redirect('principal_approved_events')
 
-    if action == 'approve':
-        event.status = 'cancelled'
-        event.is_cancellation_requested = False
-        event.cancellation_review_remark = remark
-        event.save()
-        notify(
-            recipient=event.created_by,
-            sender=request.user,
-            event=event,
-            type='cancel_approved',
-            message=f"Cancellation approved for event '{event.title}'."
-        )
-        messages.success(request, "Cancellation approved successfully.")
-    elif action == 'reject':
-        event.is_cancellation_requested = False
-        event.cancellation_review_remark = remark or "Cancellation request rejected."
-        event.save()
-        notify(
-            recipient=event.created_by,
-            sender=request.user,
-            event=event,
-            type='cancel_rejected',
-            message=f"Cancellation rejected for event '{event.title}'."
-        )
-        messages.success(request, "Cancellation request rejected.")
-    else:
-        messages.error(request, "Invalid cancellation action.")
-
-    return redirect('principal_pending_events')
+    event.status = 'rejected'
+    event.principal_remark = remark
+    event.save()
+    notify(
+        recipient=event.created_by,
+        sender=request.user,
+        event=event,
+        type='rejected',
+        message=f"Your approved event '{event.title}' has been rejected."
+    )
+    messages.success(request, "Approved event rejected successfully.")
+    return redirect('principal_approved_events')
 
 
   # adjust import if needed
@@ -803,6 +792,131 @@ def faculty_filter_events(request):
         return render(request, 'events/partials/faculty_filter_list.html', context)
 
     return render(request, 'events/faculty_filter.html', context)
+
+
+@login_required(login_url='/login/')
+def faculty_post_submission_due_events(request):
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    events = Event.objects.filter(
+        created_by=request.user,
+        status='approved'
+    ).select_related('created_by', 'department', 'venue').order_by('-start_date')
+
+    return render(
+        request,
+        'events/faculty_post_submission_due.html',
+        {
+            'events': events,
+            'active_nav': 'faculty-post-submissions',
+        }
+    )
+
+
+@login_required(login_url='/login/')
+def faculty_approved_events(request):
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    events = Event.objects.filter(
+        created_by=request.user,
+        status='approved',
+    ).select_related('created_by', 'department', 'venue').order_by('-start_date')
+
+    return render(
+        request,
+        'events/faculty_approved_events.html',
+        {
+            'events': events,
+            'active_nav': 'faculty-approved',
+        }
+    )
+
+
+@login_required(login_url='/login/')
+def faculty_upload_post_event_data(request):
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    events = Event.objects.filter(
+        created_by=request.user,
+        status='approved',
+        end_date__lt=timezone.localdate(),
+    ).select_related('created_by', 'department', 'venue').order_by('-start_date')
+
+    return render(
+        request,
+        'events/faculty_upload_post_event_data.html',
+        {
+            'events': events,
+            'active_nav': 'faculty-post-upload',
+        }
+    )
+
+
+@login_required(login_url='/login/')
+def faculty_rejected_events(request):
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    events = Event.objects.filter(
+        created_by=request.user,
+        status='rejected'
+    ).select_related('created_by', 'department', 'venue').order_by('-created_at')
+
+    return render(
+        request,
+        'events/faculty_rejected_events.html',
+        {
+            'events': events,
+            'active_nav': 'faculty-rejected',
+        }
+    )
+
+
+@login_required(login_url='/login/')
+def faculty_edit_resubmit_event(request, event_id):
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    event = get_object_or_404(Event, id=event_id, created_by=request.user)
+    if event.status != 'rejected':
+        messages.error(request, "Only rejected events can be edited and resubmitted.")
+        return redirect('event_detail', event_id=event.id)
+
+    if request.method == "POST":
+        form = EventForm(request.POST, instance=event, user=request.user)
+        if form.is_valid():
+            updated_event = form.save(commit=False)
+            updated_event.status = 'pending'
+            updated_event.principal_remark = ''
+            updated_event.save()
+
+            principal = User.objects.filter(role='principal').first()
+            if principal:
+                notify(
+                    recipient=principal,
+                    sender=request.user,
+                    event=updated_event,
+                    type='submitted',
+                    message=f"Event '{updated_event.title}' was edited and resubmitted for approval."
+                )
+
+            messages.success(request, "Event updated and resubmitted for approval.")
+            return redirect('faculty_rejected_events')
+    else:
+        form = EventForm(instance=event, user=request.user)
+
+    return render(
+        request,
+        'events/faculty_edit_resubmit.html',
+        {
+            'form': form,
+            'event': event,
+            'active_nav': 'faculty-rejected',
+        }
+    )
 
 
 @login_required(login_url='/login/')

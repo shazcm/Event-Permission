@@ -70,17 +70,15 @@ class HashtagEventFlowTests(TestCase):
             status="approved",
         )
 
-    def test_faculty_owner_can_request_cancellation_for_approved_event(self):
+    def test_faculty_owner_can_cancel_approved_event_directly(self):
         self.client.login(username="faculty1", password="pass1234")
         response = self.client.post(
             reverse("faculty_request_cancel_event", args=[self.event.id]),
-            {"reason": "Scheduling issue"},
         )
         self.assertEqual(response.status_code, 302)
         self.event.refresh_from_db()
-        self.assertTrue(self.event.is_cancellation_requested)
-        self.assertEqual(self.event.cancellation_reason, "Scheduling issue")
-        self.assertIsNotNone(self.event.cancellation_requested_at)
+        self.assertEqual(self.event.status, "cancelled")
+        self.assertFalse(self.event.is_cancellation_requested)
         self.assertTrue(
             Notification.objects.filter(
                 event=self.event,
@@ -89,72 +87,88 @@ class HashtagEventFlowTests(TestCase):
             ).exists()
         )
 
-    def test_faculty_cannot_request_cancellation_for_other_users_event(self):
-        self.client.login(username="faculty2", password="pass1234")
+    def test_faculty_owner_can_cancel_pending_event_directly(self):
+        self.event.status = "pending"
+        self.event.save()
+        self.client.login(username="faculty1", password="pass1234")
         response = self.client.post(
             reverse("faculty_request_cancel_event", args=[self.event.id]),
-            {"reason": "Not mine"},
         )
         self.assertEqual(response.status_code, 302)
         self.event.refresh_from_db()
-        self.assertFalse(self.event.is_cancellation_requested)
+        self.assertEqual(self.event.status, "cancelled")
 
-    def test_faculty_cannot_request_cancellation_for_completed_event(self):
+    def test_faculty_cannot_cancel_other_users_event(self):
+        self.client.login(username="faculty2", password="pass1234")
+        response = self.client.post(
+            reverse("faculty_request_cancel_event", args=[self.event.id]),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, "approved")
+
+    def test_faculty_cannot_cancel_completed_event(self):
         self.event.status = "completed"
         self.event.save()
         self.client.login(username="faculty1", password="pass1234")
         response = self.client.post(
             reverse("faculty_request_cancel_event", args=[self.event.id]),
-            {"reason": "Too late"},
         )
         self.assertEqual(response.status_code, 302)
         self.event.refresh_from_db()
-        self.assertFalse(self.event.is_cancellation_requested)
+        self.assertEqual(self.event.status, "completed")
 
-    def test_principal_can_approve_cancellation_request(self):
-        self.event.is_cancellation_requested = True
-        self.event.cancellation_reason = "Need to cancel"
-        self.event.save()
+    def test_principal_can_reject_approved_event(self):
         self.client.login(username="principal1", password="pass1234")
         response = self.client.post(
-            reverse("principal_cancel_event_action", args=[self.event.id, "approve"]),
-            {"remark": "Approved"},
+            reverse("principal_reject_approved_event", args=[self.event.id]),
+            {"remark": "Policy issue"},
         )
         self.assertEqual(response.status_code, 302)
         self.event.refresh_from_db()
-        self.assertEqual(self.event.status, "cancelled")
-        self.assertFalse(self.event.is_cancellation_requested)
-        self.assertEqual(self.event.cancellation_review_remark, "Approved")
+        self.assertEqual(self.event.status, "rejected")
+        self.assertEqual(self.event.principal_remark, "Policy issue")
         self.assertTrue(
             Notification.objects.filter(
                 event=self.event,
-                type="cancel_approved",
+                type="rejected",
                 recipient=self.faculty,
             ).exists()
         )
 
-    def test_principal_can_reject_cancellation_request(self):
-        self.event.status = "pending"
-        self.event.is_cancellation_requested = True
-        self.event.cancellation_reason = "Need to cancel"
-        self.event.save()
+    def test_principal_reject_approved_event_requires_remark(self):
         self.client.login(username="principal1", password="pass1234")
         response = self.client.post(
-            reverse("principal_cancel_event_action", args=[self.event.id, "reject"]),
-            {"remark": "Cannot reject"},
+            reverse("principal_reject_approved_event", args=[self.event.id]),
+            {"remark": ""},
         )
         self.assertEqual(response.status_code, 302)
         self.event.refresh_from_db()
-        self.assertEqual(self.event.status, "pending")
-        self.assertFalse(self.event.is_cancellation_requested)
-        self.assertEqual(self.event.cancellation_review_remark, "Cannot reject")
-        self.assertTrue(
-            Notification.objects.filter(
-                event=self.event,
-                type="cancel_rejected",
-                recipient=self.faculty,
-            ).exists()
+        self.assertEqual(self.event.status, "approved")
+
+    def test_principal_reject_approved_event_blocked_for_completed(self):
+        self.event.status = "completed"
+        self.event.save()
+        self.client.login(username="principal1", password="pass1234")
+        response = self.client.post(
+            reverse("principal_reject_approved_event", args=[self.event.id]),
+            {"remark": "Too late"},
         )
+        self.assertEqual(response.status_code, 302)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, "completed")
+
+    def test_principal_reject_approved_event_blocked_for_verified(self):
+        self.event.status = "verified"
+        self.event.save()
+        self.client.login(username="principal1", password="pass1234")
+        response = self.client.post(
+            reverse("principal_reject_approved_event", args=[self.event.id]),
+            {"remark": "Too late"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, "verified")
 
     def test_faculty_filter_supports_cancelled_status(self):
         self.event.status = "cancelled"
@@ -166,6 +180,117 @@ class HashtagEventFlowTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "AI Workshop")
+
+    def test_download_report_shown_only_for_verified_event_detail(self):
+        self.client.login(username="principal1", password="pass1234")
+        response = self.client.get(reverse("event_detail", args=[self.event.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Download Detailed Report")
+
+        self.event.status = "verified"
+        self.event.save()
+        response = self.client.get(reverse("event_detail", args=[self.event.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Download Detailed Report")
+
+    def test_principal_approved_page_uses_modal_reject_not_inline_input(self):
+        self.client.login(username="principal1", password="pass1234")
+        response = self.client.get(reverse("principal_approved_events"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-reject-trigger")
+        self.assertNotContains(response, 'placeholder="Reason for rejection"')
+
+    def test_faculty_post_submission_due_shows_only_approved_owned(self):
+        Event.objects.create(
+            title="Declined Special Alpha",
+            category="department",
+            created_by=self.faculty,
+            department=self.department,
+            participation_type="mixed",
+            budget="500.00",
+            venue=self.venue,
+            start_date=date(2026, 4, 2),
+            end_date=date(2026, 4, 2),
+            description="Rejected",
+            status="rejected",
+        )
+        Event.objects.create(
+            title="Other Faculty Approved",
+            category="department",
+            created_by=self.other_faculty,
+            department=self.department,
+            participation_type="mixed",
+            budget="700.00",
+            venue=self.venue,
+            start_date=date(2026, 4, 3),
+            end_date=date(2026, 4, 3),
+            description="Other",
+            status="approved",
+        )
+        self.client.login(username="faculty1", password="pass1234")
+        response = self.client.get(reverse("faculty_post_submission_due_events"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "AI Workshop")
+        self.assertNotContains(response, "Declined Special Alpha")
+        self.assertNotContains(response, "Other Faculty Approved")
+
+    def test_faculty_rejected_events_page_shows_only_rejected_owned(self):
+        self.event.status = "rejected"
+        self.event.principal_remark = "Try again"
+        self.event.save()
+        Event.objects.create(
+            title="Published Demo Gamma",
+            category="department",
+            created_by=self.faculty,
+            department=self.department,
+            participation_type="mixed",
+            budget="500.00",
+            venue=self.venue,
+            start_date=date(2026, 4, 4),
+            end_date=date(2026, 4, 4),
+            description="Approved",
+            status="approved",
+        )
+        self.client.login(username="faculty1", password="pass1234")
+        response = self.client.get(reverse("faculty_rejected_events"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "AI Workshop")
+        self.assertNotContains(response, "Published Demo Gamma")
+        self.assertContains(response, "Edit & Resubmit")
+
+    def test_faculty_edit_resubmit_sets_event_back_to_pending(self):
+        self.event.status = "rejected"
+        self.event.principal_remark = "Needs changes"
+        self.event.save()
+        self.client.login(username="faculty1", password="pass1234")
+        response = self.client.post(
+            reverse("faculty_edit_resubmit_event", args=[self.event.id]),
+            {
+                "title": "AI Workshop Updated",
+                "start_date": "2026-04-01",
+                "end_date": "2026-04-01",
+                "start_time": "",
+                "end_time": "",
+                "chief_guest": "Guest",
+                "venue": str(self.venue.id),
+                "department": str(self.department.id),
+                "participation_type": "mixed",
+                "budget": "1000.00",
+                "description": "Updated description",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, "pending")
+        self.assertEqual(self.event.principal_remark, "")
+        self.assertEqual(self.event.title, "AI Workshop Updated")
+
+    def test_faculty_edit_resubmit_blocked_for_non_rejected(self):
+        self.client.login(username="faculty1", password="pass1234")
+        response = self.client.get(reverse("faculty_edit_resubmit_event", args=[self.event.id]))
+        self.assertEqual(response.status_code, 302)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.status, "approved")
 
     def test_post_upload_saves_and_updates_hashtags(self):
         self.client.login(username="faculty1", password="pass1234")

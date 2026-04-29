@@ -26,8 +26,8 @@
 </div>
 
 <div class="panel" style="margin-bottom: 18px; display: flex; gap: 10px; flex-wrap: wrap;">
-    <a class="btn" href="{% url 'create_event' %}">Create Event</a>
-    <a class="btn secondary" href="{% url 'faculty_filter_events' %}">{{ button_label }}</a>
+    <a class="btn" href="{% url 'create_event' %}" style="flex:1;min-width:220px;text-align:center;">Create a New Event</a>
+    <a class="btn secondary" href="{% url 'faculty_upload_post_event_data' %}" style="flex:1;min-width:220px;text-align:center;">Submit Post-Event Data</a>
 </div>
 
 <section class="panel">
@@ -39,8 +39,17 @@
 
                 <div class="action-row">
                     <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                    {% if e.status == 'pending' or e.status == 'approved' %}
+                        <form method="post" action="{% url 'faculty_request_cancel_event' e.id %}">
+                            {% csrf_token %}
+                            <button class="btn danger" type="submit">Cancel Event</button>
+                        </form>
+                    {% endif %}
                     {% if e.status == 'approved' %}
                         <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
+                    {% endif %}
+                    {% if e.status == 'rejected' %}
+                        <a class="btn" href="{% url 'faculty_edit_resubmit_event' e.id %}">Edit & Resubmit</a>
                     {% endif %}
                 </div>
             </article>
@@ -50,8 +59,5 @@
             </article>
         {% endfor %}
     </section>
-    <div style="margin-top: 12px;">
-        <a class="card-link" href="{% url 'faculty_filter_events' %}">View All Related Events</a>
-    </div>
 </section>
 {% endblock %}

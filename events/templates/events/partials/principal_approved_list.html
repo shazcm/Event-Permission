@@ -8,6 +8,16 @@
             <div class="action-row">
                 <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
                 <a class="btn secondary" href="{% url 'change_event_venue' e.id %}">Change Venue</a>
+                <button
+                    type="button"
+                    class="btn danger"
+                    data-reject-trigger
+                    data-event-id="{{ e.id }}"
+                    data-reject-url="{% url 'principal_reject_approved_event' e.id %}"
+                    data-event-title="{{ e.title|escape }}"
+                >
+                    Reject Event
+                </button>
             </div>
         </article>
     {% empty %}
