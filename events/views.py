@@ -1,34 +1,27 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .forms import EventForm
-from .models import Event, Department, Tag
-from django.utils import timezone
-from .forms import PostEventForm
-from django.db.models import Count
-from django.db.models import Q
-from django.shortcuts import get_object_or_404
-from django import forms
-from .models import Venue
+from django.views.decorators.cache import never_cache
 from django.contrib import messages
-from django.http import JsonResponse
-from datetime import datetime
+from django.http import JsonResponse, HttpResponse
+from django.db.models import Count, Q
 from django.utils import timezone
-from .models import EventPhoto
-from .forms import EventPhotoForm
+from django import forms
+from datetime import datetime
+import os
+
+from .forms import EventForm, PostEventForm, EventPhotoForm
+from .models import Event, Department, Tag, Venue, EventPhoto
+
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from django.http import HttpResponse
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.platypus import ListFlowable, ListItem
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER
-import os
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import never_cache
+
 from accounts.utils import notify
-from accounts.models import User
-from accounts.models import Notification
+from accounts.models import User, Notification
 
 
 def _is_ajax_request(request):
@@ -96,25 +89,6 @@ def create_event(request):
                 event.department = request.user.department
 
             event.save()
-
-            tags = form.cleaned_data.get("tags_input")
-
-            if tags:
-                for tag_name in tags.split(","):
-
-                    # remove spaces
-                    tag_name = tag_name.strip().lower()
-
-                    # remove # if user typed it
-                    tag_name = tag_name.lstrip("#")
-
-                    # ignore empty tags
-                    if not tag_name:
-                        continue
-
-                    tag, created = Tag.objects.get_or_create(name=tag_name)
-
-                    event.tags.add(tag)
 
             principal = User.objects.filter(role='principal').first()
 
@@ -346,20 +320,31 @@ def post_event_upload(request, event_id):
         if "submit_report" in request.POST:
             event.report_text = request.POST.get("report_text")
             event.status = "completed"
+
+            # Handle tags submitted with the report
+            tags_input = request.POST.get("tags_input", "").strip()
+            if tags_input:
+                event.tags.clear()
+                for tag_name in tags_input.split(","):
+                    tag_name = tag_name.strip().lower().lstrip("#")
+                    if tag_name:
+                        tag, _ = Tag.objects.get_or_create(name=tag_name)
+                        event.tags.add(tag)
+
             event.save()
+
+            principal = User.objects.filter(role='principal').first()
+            if principal:
+                notify(
+                    recipient=principal,
+                    sender=request.user,
+                    event=event,
+                    type='completed',
+                    message=f"Event '{event.title}' marked as completed. Please verify."
+                )
             return redirect('faculty_dashboard')
 
         event.save()
-        principal = User.objects.filter(role='principal').first()
-
-        if principal:
-            notify(
-                recipient=principal,
-                sender=request.user,
-                event=event,
-                type='completed',
-                message=f"Event '{event.title}' marked as completed. Please verify."
-            )
 
     return render(request, 'events/post_upload.html', {
         'event': event,
@@ -524,6 +509,8 @@ def faculty_filter_events(request):
 
     # 📌 Status filter
     status = request.GET.get('status')
+    upcoming = request.GET.get('upcoming')  # upcoming=1 means future approved events only
+
     if status is None or status == '':
         # No filter — show all
         selected_status = ''
@@ -536,7 +523,11 @@ def faculty_filter_events(request):
         events = events.filter(status=status)
         selected_status = status
 
-    # 👥 Participation filter
+    # 📅 Upcoming: restrict to future start dates when upcoming=1
+    if upcoming == '1':
+        today_date = timezone.now().date()
+        events = events.filter(start_date__gte=today_date)
+        page_title = "Upcoming Events"
     participation = request.GET.get('participation')
     if participation:
         events = events.filter(participation_type=participation)
@@ -725,6 +716,11 @@ def event_detail(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
 
+    # Faculty can only view their own events
+    if request.user.role == 'faculty' and event.created_by != request.user:
+        messages.error(request, "You do not have permission to view this event.")
+        return redirect('faculty_dashboard')
+
     return render(request,
                   'events/event_detail.html',
                   {'event': event})
@@ -751,9 +747,18 @@ def principal_rejected_events(request):
 
 
 
+@login_required(login_url='/login/')
 def download_detailed_report(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
+
+    # Only the event creator (faculty) or the principal can download
+    if request.user.role == 'faculty' and event.created_by != request.user:
+        messages.error(request, "You do not have permission to download this report.")
+        return redirect('faculty_dashboard')
+
+    if request.user.role not in ('faculty', 'principal'):
+        return redirect('login')
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = (
@@ -841,8 +846,6 @@ def search_events(request):
         })
 
     return JsonResponse({"events": data})
-
-from django.utils import timezone
 
 @login_required(login_url='/login/')
 def cancel_event(request, event_id):

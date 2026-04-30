@@ -5,14 +5,6 @@ from .models import Tag
 
 class EventForm(forms.ModelForm):
 
-    tags_input = forms.CharField(
-    label="Tags",
-    required=False,
-    widget=forms.TextInput(attrs={
-        "id": "tag-input",
-        "placeholder": "Example: seminar, sports, workshop"
-    })
-    )
     class Meta:
         model = Event
         fields = [
@@ -66,9 +58,19 @@ class EventForm(forms.ModelForm):
 
 
 class PostEventForm(forms.ModelForm):
+
+    tags_input = forms.CharField(
+        label="Tags",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "id": "tag-input",
+            "placeholder": "Example: seminar, sports, workshop"
+        })
+    )
+
     class Meta:
         model = Event
-        fields = [ 'attendance_file', 'completed_at']
+        fields = ['attendance_file', 'completed_at']
 
 class EventPhotoForm(forms.ModelForm):
     class Meta:

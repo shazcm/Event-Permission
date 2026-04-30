@@ -6,79 +6,214 @@
 {% block page_subtitle %}Welcome {{ request.user.get_full_name|default:request.user.username }}. Track your proposals and post-event submissions here.{% endblock %}
 
 {% block content %}
+
+{# ── Stat cards (clickable, with icons — matching principal style) ── #}
 <div class="card-grid">
-    <article class="panel">
-        <div class="card-title">Total Events</div>
+    <article class="panel" style="cursor:pointer;" onclick="location.href='{% url 'faculty_filter_events' %}'">
+        <div class="card-title">
+            Total Events <span class="chip pending"><i class="fa-regular fa-calendar"></i></span>
+        </div>
         <p class="card-value">{{ my_event_count }}</p>
+        <a class="card-link" href="{% url 'faculty_filter_events' %}">Click to view details</a>
     </article>
-    <article class="panel">
-        <div class="card-title">Pending</div>
+
+    <article class="panel" style="cursor:pointer;" onclick="location.href='{% url 'faculty_filter_events' %}?status=pending'">
+        <div class="card-title">
+            Pending <span class="chip pending"><i class="fa-regular fa-clock"></i></span>
+        </div>
         <p class="card-value">{{ pending_count }}</p>
+        <a class="card-link" href="{% url 'faculty_filter_events' %}?status=pending">Click to view details</a>
     </article>
-    <article class="panel">
-        <div class="card-title">Approved</div>
+
+    <article class="panel" style="cursor:pointer;" onclick="location.href='{% url 'faculty_filter_events' %}?status=approved'">
+        <div class="card-title">
+            Approved <span class="chip approved"><i class="fa-regular fa-circle-check"></i></span>
+        </div>
         <p class="card-value">{{ approved_count }}</p>
+        <a class="card-link" href="{% url 'faculty_filter_events' %}?status=approved">Click to view details</a>
     </article>
-    <article class="panel">
-        <div class="card-title">Verified</div>
+
+    <article class="panel" style="cursor:pointer;" onclick="location.href='{% url 'faculty_filter_events' %}?status=conducted'">
+        <div class="card-title">
+            Verified <span class="chip verified"><i class="fa-solid fa-list-check"></i></span>
+        </div>
         <p class="card-value">{{ verified_count }}</p>
+        <a class="card-link" href="{% url 'faculty_filter_events' %}?status=conducted">Click to view details</a>
     </article>
 </div>
 
-<div class="panel" style="margin-bottom: 18px; display: flex; gap: 10px; flex-wrap: wrap;">
-    <a class="btn" href="{% url 'create_event' %}">Create Event</a>
-    <a class="btn secondary" href="{% url 'faculty_filter_events' %}">My Events</a>
+{# ── Two-column: Action Panel + Recent Activity ── #}
+<div class="two-col" style="margin-bottom:14px;">
+
+    {# ── Action Panel ── #}
+    <section class="panel" style="margin-bottom:0;">
+        <h3 style="margin-top:0; margin-bottom:14px; font-size:.83rem; letter-spacing:.04em; text-transform:uppercase; color:var(--text-soft); font-weight:600;">
+            Quick Actions
+        </h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+
+            {# Create New Event — accent CTA #}
+            <a href="{% url 'create_event' %}" class="dash-action-btn dash-action-btn--primary">
+                <i class="fa-solid fa-plus"></i>
+                <div>
+                    <div class="dash-action-label">Create New Event</div>
+                    <div class="dash-action-sub">Submit a proposal</div>
+                </div>
+                <i class="fa-solid fa-chevron-right dash-action-arrow"></i>
+            </a>
+
+            {# Upload Post Event Data #}
+            <a href="{% url 'faculty_post_due_events' %}" class="dash-action-btn">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                <div>
+                    <div class="dash-action-label">Upload Post Event Data</div>
+                    <div class="dash-action-sub">Reports &amp; attendance</div>
+                </div>
+                <i class="fa-solid fa-chevron-right dash-action-arrow"></i>
+            </a>
+
+            {# Pending Events #}
+            <a href="{% url 'faculty_filter_events' %}?status=pending" class="dash-action-btn">
+                <i class="fa-regular fa-clock"></i>
+                <div>
+                    <div class="dash-action-label">Pending Events</div>
+                    <div class="dash-action-sub">{{ pending_count }} awaiting approval</div>
+                </div>
+                <i class="fa-solid fa-chevron-right dash-action-arrow"></i>
+            </a>
+
+            {# Rejected Events #}
+            <a href="{% url 'faculty_filter_events' %}?status=rejected" class="dash-action-btn">
+                <i class="fa-regular fa-circle-xmark"></i>
+                <div>
+                    <div class="dash-action-label">Rejected Events</div>
+                    <div class="dash-action-sub">{{ rejected_count }} rejected</div>
+                </div>
+                <i class="fa-solid fa-chevron-right dash-action-arrow"></i>
+            </a>
+
+        </div>
+    </section>
+
+    {# ── Recent Activity ── #}
+    <section class="panel" style="margin-bottom:0;">
+        <h3 style="margin-top:0; margin-bottom:14px; font-size:.83rem; letter-spacing:.04em; text-transform:uppercase; color:var(--text-soft); font-weight:600;">
+            <i class="fa-solid fa-bolt" style="margin-right:4px;"></i> Recent Activity
+        </h3>
+
+        {% if recent_activity %}
+            <div class="stack">
+                {% for notif in recent_activity %}
+                <a href="{% url 'notification_redirect' notif.id %}"
+                   style="display:flex; align-items:flex-start; gap:10px; text-decoration:none; color:inherit;">
+                    {% if notif.type == 'approved' %}
+                        <span style="width:9px;height:9px;border-radius:50%;background:#0f9b72;flex-shrink:0;margin-top:5px;"></span>
+                    {% elif notif.type == 'rejected' %}
+                        <span style="width:9px;height:9px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-top:5px;"></span>
+                    {% elif notif.type == 'submitted' %}
+                        <span style="width:9px;height:9px;border-radius:50%;background:#9ca3af;flex-shrink:0;margin-top:5px;"></span>
+                    {% elif notif.type == 'completed' or notif.type == 'verified' %}
+                        <span style="width:9px;height:9px;border-radius:50%;background:#2563eb;flex-shrink:0;margin-top:5px;"></span>
+                    {% else %}
+                        <span style="width:9px;height:9px;border-radius:50%;background:#f59e0b;flex-shrink:0;margin-top:5px;"></span>
+                    {% endif %}
+                    <div>
+                        <div style="font-size:.875rem; font-weight:{% if not notif.is_read %}600{% else %}400{% endif %}; line-height:1.35;">
+                            {{ notif.message }}
+                        </div>
+                        <div class="muted" style="font-size:.75rem; margin-top:2px;">
+                            {{ notif.created_at|timesince }} ago
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted" style="margin:0; font-size:.875rem;">No recent activity yet.</p>
+        {% endif %}
+    </section>
 </div>
 
+{# ── Upcoming Events section ── #}
 <section class="panel">
-    <h3 style="margin-top: 0;">Your Events</h3>
-    <section class="event-grid">
-        {% for e in my_events %}
-            <article class="event-card">
-                {% include "events/partials/event_detail_card_body.html" with event=e %}
+    <h3 style="margin-top:0;">
+        <i class="fa-regular fa-calendar-check" style="margin-right:6px; color:var(--accent);"></i>
+        Upcoming Events
+    </h3>
 
-                <div class="action-row" style="display:flex; gap:8px; flex-wrap:wrap;">
-
-                    <!-- View -->
-                    <a class="btn secondary" href="{% url 'event_detail' e.id %}">
-                        View Details
-                    </a>
-
-                    <!-- Upload (only after event end date) -->
-                    {% if e.status == 'approved' and e.end_date <= today %}
-                        <a class="btn" href="{% url 'post_event_upload' e.id %}">
-                            Upload Post-Event
-                        </a>
-                    {% endif %}
-
-                    <!-- ✅ Cancel Button (NEW) -->
-                    {% if e.status == 'pending' and e.end_date >= today or e.status == 'approved' and e.end_date >= today %}
-                        <form method="POST" action="{% url 'cancel_event' e.id %}">
-                            {% csrf_token %}
-
-                            <button type="submit"
-                                    class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Are you sure you want to cancel this event?')">
-                                Cancel Event
-                            </button>
-                        </form>
-                    {% endif %}
-                    {% if e.status == 'rejected' %}
-                        <a class="btn" href="{% url 'edit_event' e.id %}">
-                            Edit & Resubmit
-                        </a>
-                    {% endif %}
-
+    {% if upcoming_events %}
+        <div class="stack">
+            {% for e in upcoming_events %}
+            <article class="item">
+                <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+                    <div>
+                        <h4 style="margin:0 0 5px 0;">{{ e.title }}</h4>
+                        <div class="muted" style="font-size:.82rem;">
+                            {{ e.department.name|default:"General" }}
+                            {% if e.category %}&nbsp;·&nbsp;{{ e.get_category_display }}{% endif %}
+                        </div>
+                        <div class="muted" style="margin-top:6px; font-size:.82rem; display:flex; gap:14px; flex-wrap:wrap;">
+                            <span><i class="fa-regular fa-calendar"></i> {{ e.start_date|date:"d M Y" }}{% if e.end_date != e.start_date %} – {{ e.end_date|date:"d M Y" }}{% endif %}</span>
+                            <span><i class="fa-solid fa-location-dot"></i> {{ e.venue }}</span>
+                            <span><i class="fa-solid fa-indian-rupee-sign"></i> {{ e.budget }}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
+                        <span class="chip approved">Approved</span>
+                        <a class="card-link" href="{% url 'event_detail' e.id %}" style="font-size:.8rem; white-space:nowrap;">View →</a>
+                    </div>
                 </div>
             </article>
-        {% empty %}
-            <article class="event-card">
-                <p class="muted" style="margin:0;">You have not created any events.</p>
-            </article>
-        {% endfor %}
-    </section>
-    <div style="margin-top: 12px;">
-        <a class="card-link" href="{% url 'faculty_filter_events' %}">View All My Events →</a>
-    </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top:12px;">
+            <a class="card-link" href="{% url 'faculty_filter_events' %}?status=approved&upcoming=1">View all upcoming events →</a>
+        </div>
+    {% else %}
+        <p class="muted" style="margin:0;">No upcoming approved events at the moment.</p>
+    {% endif %}
 </section>
+
+{# ── Scoped styles for action buttons ── #}
+<style>
+.dash-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: inherit;
+    text-decoration: none;
+    transition: background .12s, border-color .12s;
+}
+.dash-action-btn:hover {
+    background: var(--hover, #f5f5f5);
+    border-color: var(--accent);
+}
+.dash-action-btn > i:first-child {
+    font-size: 1rem;
+    width: 18px;
+    text-align: center;
+    color: var(--text-soft);
+    flex-shrink: 0;
+}
+.dash-action-btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.dash-action-btn--primary > i:first-child { color: #fff; }
+.dash-action-btn--primary:hover { opacity: .9; border-color: var(--accent); }
+.dash-action-label { font-size: .9rem; font-weight: 600; line-height: 1.2; }
+.dash-action-sub   { font-size: .75rem; opacity: .6; font-weight: 400; margin-top:1px; }
+.dash-action-btn--primary .dash-action-sub { opacity: .8; }
+.dash-action-arrow { margin-left: auto; font-size: .7rem; opacity: .35; flex-shrink:0; }
+.dash-action-btn--primary .dash-action-arrow { opacity: .7; }
+@media (max-width: 700px) {
+    .two-col { grid-template-columns: 1fr !important; }
+}
+</style>
+
 {% endblock %}

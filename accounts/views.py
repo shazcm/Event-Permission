@@ -59,6 +59,13 @@ def faculty_dashboard(request):
     recent_notifications = request.user.notifications.order_by('-created_at')[:5]
     today = timezone.now().date()
 
+    # Upcoming: approved events whose start_date hasn't passed yet
+    upcoming_events = my_events.filter(status='approved', start_date__gte=today).order_by('start_date')
+    rejected_events = my_events.filter(status='rejected').order_by('-created_at')
+
+    # Recent activity: last 6 notifications for this user
+    recent_activity = request.user.notifications.select_related('event').order_by('-created_at')[:6]
+
     context = {
         'my_events': my_events,
         'my_event_count': my_events.count(),
@@ -67,7 +74,11 @@ def faculty_dashboard(request):
         'completed_count': my_events.filter(status='completed').count(),
         'verified_count': my_events.filter(status='verified').count(),
         'rejected_count': my_events.filter(status='rejected').count(),
-        'today': today, 
+        'upcoming_count': upcoming_events.count(),
+        'upcoming_events': upcoming_events,
+        'rejected_events': rejected_events,
+        'recent_activity': recent_activity,
+        'today': today,
         'active_nav': 'faculty-dashboard',
         'unread_count': unread_count,
         'recent_notifications': recent_notifications,

@@ -46,6 +46,7 @@ class Notification(models.Model):
         ('completed', 'Event Completed'),
         ('venue_changed', 'Venue Changed'),
         ('reminder', 'Reminder'),
+        ('cancelled', 'Event Cancelled'),
     )
 
     recipient = models.ForeignKey(

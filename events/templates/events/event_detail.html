@@ -70,7 +70,9 @@
 </section>
 
 <section class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <a class="btn secondary" href="{% url 'download_detailed_report' event.id %}">Download Detailed Report</a>
+    {% if event.status == "verified" %}
+        <a class="btn secondary" href="{% url 'download_detailed_report' event.id %}">Download Detailed Report</a>
+    {% endif %}
 
     {% if request.user.role == "principal" and event.status == "completed" %}
         <span class="muted">Final verification is done from this page.</span>

@@ -20,8 +20,64 @@
         {% if event.report_text %}
             <h3>Generated Report</h3>
             <textarea name="report_text" rows="12">{{ event.report_text }}</textarea>
-            <button class="btn" type="submit" name="submit_report">Submit Final Report</button>
+
+            <label for="tag-input" style="margin-top:10px; display:block;">
+                Tags <span class="muted" style="font-weight:400; font-size:.85rem;">(comma-separated, e.g. seminar, sports)</span>
+            </label>
+            <div style="position:relative;">
+                <input id="tag-input" type="text" name="tags_input"
+                       value="{{ event.tags.all|join:', ' }}"
+                       placeholder="Example: seminar, sports, workshop"
+                       autocomplete="off">
+                <div id="tag-suggestions" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--surface); border:1px solid var(--line); border-radius:8px; z-index:200; max-height:160px; overflow-y:auto; box-shadow:var(--shadow);"></div>
+            </div>
+
+            <button class="btn" type="submit" name="submit_report" style="margin-top:12px;">Submit Final Report</button>
         {% endif %}
     </form>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const tagInput = document.getElementById("tag-input");
+    const suggestionBox = document.getElementById("tag-suggestions");
+
+    if (!tagInput || !suggestionBox) return;
+
+    tagInput.addEventListener("keyup", function () {
+        const query = tagInput.value.split(",").pop().trim();
+        if (query.length < 1) { suggestionBox.style.display = "none"; return; }
+
+        fetch(`/events/tag-autocomplete/?q=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(data => {
+                suggestionBox.innerHTML = "";
+                if (!data.length) { suggestionBox.style.display = "none"; return; }
+                data.forEach(tag => {
+                    const item = document.createElement("div");
+                    item.textContent = tag;
+                    item.style.cssText = "padding:8px 12px; cursor:pointer; font-size:.875rem;";
+                    item.addEventListener("mouseenter", () => item.style.background = "var(--hover, #f5f5f5)");
+                    item.addEventListener("mouseleave", () => item.style.background = "");
+                    item.onclick = function () {
+                        const parts = tagInput.value.split(",");
+                        parts.pop();
+                        parts.push(" " + tag);
+                        tagInput.value = parts.join(",") + ", ";
+                        suggestionBox.style.display = "none";
+                        tagInput.focus();
+                    };
+                    suggestionBox.appendChild(item);
+                });
+                suggestionBox.style.display = "block";
+            });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!tagInput.contains(e.target)) suggestionBox.style.display = "none";
+    });
+});
+</script>
 {% endblock %}
