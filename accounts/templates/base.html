@@ -208,55 +208,31 @@
             font-size: 1.05rem;
         }
 
-        .dashboard-navbar {
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-            min-height: 56px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: #ffffff;
-            color: var(--text);
-            display: flex;
-            box-shadow: var(--shadow);
-        }
-
-        .navbar-left,
-        .navbar-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .navbar-label {
-            font-size: .95rem;
-            color: var(--text-soft);
-            font-weight: 700;
-        }
-
-        .navbar-menu-toggle {
-            display: none;
-            border: 1px solid var(--line);
-            background: #fff;
-            color: var(--text);
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            cursor: pointer;
+        /* ── Floating notification button (top-right) ── */
+        .notif-fab {
+            position: fixed;
+            top: 16px;
+            right: 18px;
+            z-index: 50;
+            display: none; /* shown only when authenticated via JS */
         }
 
         .nav-icon-btn {
             position: relative;
             display: inline-grid;
             place-items: center;
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 10px;
             border: 1px solid var(--line);
             background: #fff;
             color: var(--text);
             cursor: pointer;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-icon-btn:hover {
+            background: var(--surface-muted);
         }
 
         .notif-badge {
@@ -276,14 +252,14 @@
             display: none;
             position: absolute;
             right: 0;
-            top: 42px;
-            width: 280px;
-            max-height: 320px;
+            top: 44px;
+            width: 290px;
+            max-height: 340px;
             overflow: auto;
             background: #fff;
             color: #111;
             border-radius: 10px;
-            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
             z-index: 90;
             border: 1px solid #ebe4de;
         }
@@ -306,23 +282,22 @@
             font-size: .9rem;
         }
 
-        .navbar-logout {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: 10px;
+        /* ── Mobile hamburger (top-left, outside sidebar) ── */
+        .navbar-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 50;
             border: 1px solid var(--line);
             background: #fff;
             color: var(--text);
-            font-weight: 700;
-            font-size: .9rem;
-        }
-
-        .navbar-logout:hover,
-        .nav-icon-btn:hover,
-        .navbar-menu-toggle:hover {
-            background: var(--surface-muted);
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            place-items: center;
         }
 
         .page-head {
@@ -708,8 +683,9 @@
             }
 
             .main {
-                margin-left: 0;
+                margin-left: 0 !important;
                 padding: 14px;
+                padding-top: 64px;
             }
 
             body.has-sidebar.sidebar-collapsed .main {
@@ -747,15 +723,6 @@
 
             .navbar-menu-toggle {
                 display: inline-grid;
-            }
-
-            .navbar-label {
-                display: none;
-            }
-
-            .dashboard-navbar {
-                padding: 8px 10px;
-                min-height: 52px;
             }
         }
     </style>
@@ -799,58 +766,50 @@
                     {% elif request.user.role == "faculty" %}
                         <li><a class="nav-link {% if active_nav == 'faculty-dashboard' or request.resolver_match.url_name == 'faculty_dashboard' %}active{% endif %}" href="{% url 'faculty_dashboard' %}" title="Dashboard"><i class="fa-solid fa-table-columns"></i><span class="nav-text">Dashboard</span></a></li>
                         <li><a class="nav-link {% if active_nav == 'faculty-create' or request.resolver_match.url_name == 'create_event' %}active{% endif %}" href="{% url 'create_event' %}" title="Create Event"><i class="fa-solid fa-plus"></i><span class="nav-text">Create Event</span></a></li>
-                        <li><a class="nav-link {% if active_nav == 'faculty-filter' or request.resolver_match.url_name == 'faculty_filter_events' %}active{% endif %}" href="{% url 'faculty_filter_events' %}" title="All Related Events"><i class="fa-solid fa-filter"></i><span class="nav-text">All Related Events</span></a></li>
+                        <li><a class="nav-link {% if active_nav == 'faculty-filter' or request.resolver_match.url_name == 'faculty_filter_events' %}active{% endif %}" href="{% url 'faculty_filter_events' %}" title="My Events"><i class="fa-solid fa-filter"></i><span class="nav-text">My Events</span></a></li>
                     {% endif %}
                 </ul>
+
+                <!-- Logout in sidebar footer -->
+                <div class="sidebar-foot">
+                    <a class="nav-link" href="{% url 'logout' %}" title="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="nav-text">Logout</span>
+                    </a>
+                </div>
             </aside>
             <div class="overlay" id="navOverlay"></div>
+
+            <!-- Floating notification bell (fixed top-right) -->
+            <div class="notif-fab" id="notifFab">
+                <div style="position:relative;">
+                    <button class="nav-icon-btn" id="notifToggle" type="button" aria-label="Notifications">
+                        <i class="fa-regular fa-bell"></i>
+                        {% if unread_count > 0 %}
+                            <span class="notif-badge">{{ unread_count }}</span>
+                        {% endif %}
+                    </button>
+                    <div id="notifDropdown" class="notif-dropdown">
+                        {% for n in recent_notifications %}
+                            <a href="{% url 'notification_redirect' n.id %}"
+                               class="notif-item"
+                               style="font-weight:{% if not n.is_read %}700{% else %}500{% endif %};">
+                                {{ n.message }}
+                            </a>
+                        {% empty %}
+                            <div class="notif-empty">No notifications</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile hamburger (fixed top-left) -->
+            <button class="navbar-menu-toggle" id="menuToggle" type="button" aria-label="Open Menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
         {% endif %}
 
         <main class="main">
-            {% if request.user.is_authenticated %}
-                <nav class="dashboard-navbar">
-                    <div class="navbar-left">
-                        <button class="navbar-menu-toggle" id="menuToggle" type="button" aria-label="Open Menu">
-                            <i class="fa-solid fa-bars"></i>
-                        </button>
-                        <span class="navbar-label">
-                            {% if request.user.role == "principal" %}
-                                Principal Dashboard
-                            {% elif request.user.role == "faculty" %}
-                                Faculty Dashboard
-                            {% else %}
-                                Dashboard
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="navbar-right">
-                        <div style="position:relative;">
-                            <button class="nav-icon-btn" id="notifToggle" type="button" aria-label="Notifications">
-                                <i class="fa-regular fa-bell"></i>
-                                {% if unread_count > 0 %}
-                                    <span class="notif-badge">{{ unread_count }}</span>
-                                {% endif %}
-                            </button>
-                            <div id="notifDropdown" class="notif-dropdown">
-                                {% for n in recent_notifications %}
-                                    <a href="{% url 'notification_redirect' n.id %}"
-                                       class="notif-item"
-                                       style="font-weight:{% if not n.is_read %}700{% else %}500{% endif %};">
-                                        {{ n.message }}
-                                    </a>
-                                {% empty %}
-                                    <div class="notif-empty">No notifications</div>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <a class="navbar-logout" href="{% url 'logout' %}">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            Logout
-                        </a>
-                    </div>
-                </nav>
-            {% endif %}
 
             <header class="page-head">
                 <h1 class="page-title">{% block page_title %}College Event System{% endblock %}</h1>
@@ -884,6 +843,12 @@
             const menuToggle = document.getElementById("menuToggle");
             const overlay = document.getElementById("navOverlay");
             const sidebarCollapseToggle = document.getElementById("sidebarCollapseToggle");
+            const notifFab = document.getElementById("notifFab");
+
+            // Show floating notification bell
+            if (notifFab) {
+                notifFab.style.display = "block";
+            }
 
             if (!menuToggle || !overlay) return;
 

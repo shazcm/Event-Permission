@@ -27,7 +27,7 @@
 
 <div class="panel" style="margin-bottom: 18px; display: flex; gap: 10px; flex-wrap: wrap;">
     <a class="btn" href="{% url 'create_event' %}">Create Event</a>
-    <a class="btn secondary" href="{% url 'faculty_filter_events' %}">{{ button_label }}</a>
+    <a class="btn secondary" href="{% url 'faculty_filter_events' %}">My Events</a>
 </div>
 
 <section class="panel">
@@ -78,7 +78,7 @@
         {% endfor %}
     </section>
     <div style="margin-top: 12px;">
-        <a class="card-link" href="{% url 'faculty_filter_events' %}">View All Related Events</a>
+        <a class="card-link" href="{% url 'faculty_filter_events' %}">View All My Events →</a>
     </div>
 </section>
 {% endblock %}

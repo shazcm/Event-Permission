@@ -511,30 +511,9 @@ def faculty_filter_events(request):
 
     user = request.user
 
-    # Base queryset
-    if user.sub_role == 'hod':
-        events = Event.objects.filter(department=user.department)
-        page_title = f"{user.department} Department Events"
-
-    elif user.sub_role == 'nss':
-        events = Event.objects.filter(category='nss')
-        page_title = "NSS Events"
-
-    elif user.sub_role == 'ncc':
-        events = Event.objects.filter(category='ncc')
-        page_title = "NCC Events"
-
-    elif user.sub_role == 'union':
-        events = Event.objects.filter(category='union')
-        page_title = "Union Events"
-
-    elif user.sub_role == 'other':
-        events = Event.objects.filter(category='other')
-        page_title = "Other Events"
-
-    else:
-        events = Event.objects.none()
-        page_title = "Events"
+    # Only show events created by this user
+    events = Event.objects.filter(created_by=user)
+    page_title = "My Events"
 
     events = events.select_related('created_by', 'department', 'venue').order_by('-start_date')
 
