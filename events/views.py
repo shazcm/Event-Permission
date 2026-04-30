@@ -514,6 +514,7 @@ def faculty_filter_events(request):
     # Only show events created by this user
     events = Event.objects.filter(created_by=user)
     page_title = "My Events"
+    total_count = events.count()
 
     events = events.select_related('created_by', 'department', 'venue').order_by('-start_date')
 
@@ -523,9 +524,9 @@ def faculty_filter_events(request):
 
     # 📌 Status filter
     status = request.GET.get('status')
-    if status is None:
-        events = events.filter(status__in=['completed', 'verified'])
-        selected_status = "conducted"
+    if status is None or status == '':
+        # No filter — show all
+        selected_status = ''
 
     elif status == "conducted":
         events = events.filter(status__in=['completed', 'verified'])
@@ -558,6 +559,7 @@ def faculty_filter_events(request):
         'events': events,
         'page_title': page_title,
         'selected_status': selected_status,
+        'total_count': total_count,
         'today': timezone.now().date(),
         'active_nav': 'faculty-filter',
     }

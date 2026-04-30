@@ -1,17 +1,53 @@
-<h2>Edit Event</h2>
+{% extends "base.html" %}
+
+{% block title %}Edit Event{% endblock %}
+{% block page_title %}Edit & Resubmit Event{% endblock %}
+{% block page_subtitle %}Make changes to your rejected event and resubmit for approval.{% endblock %}
+
+{% block extra_css %}
+<style>
+    #edit-form p {
+        margin: 0 0 10px;
+    }
+    #edit-form label {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
 
 {% if event.principal_remark %}
-    <div style="margin-bottom:10px; padding:10px; border:1px solid #f5c2c7; background:#f8d7da; border-radius:8px;">
-        <strong>Rejection Reason:</strong>
-        <p style="margin:5px 0 0;">{{ event.principal_remark }}</p>
-    </div>
+<div class="message error" style="margin-bottom: 16px;">
+    <strong>Rejection Reason:</strong> {{ event.principal_remark }}
+</div>
 {% endif %}
 
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
+<section class="panel" style="max-width: 900px;">
+    <form method="POST" id="edit-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div style="display: flex; gap: 10px; margin-top: 8px;">
+            <button class="btn" type="submit">Update & Resubmit</button>
+            <a class="btn secondary" href="{% url 'faculty_dashboard' %}">Cancel</a>
+        </div>
+    </form>
+</section>
 
-    <button type="submit" class="btn">
-        Update & Resubmit
-    </button>
-</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const startDateField = document.getElementById("id_start_date");
+    const endDateField = document.getElementById("id_end_date");
+    if (startDateField && endDateField) {
+        startDateField.addEventListener("change", function() {
+            if (!endDateField.value || endDateField.value < startDateField.value) {
+                endDateField.value = startDateField.value;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
