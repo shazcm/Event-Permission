@@ -7,7 +7,7 @@
 
             <div class="action-row">
                 <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
-                {% if e.status == 'approved' %}
+                {% if e.status == 'approved' and e.end_date <= today %}
                     <a class="btn" href="{% url 'post_event_upload' e.id %}">Upload Post-Event</a>
                 {% endif %}
                  <!-- ✅ Cancel Button (NEW) -->

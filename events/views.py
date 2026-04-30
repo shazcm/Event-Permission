@@ -558,6 +558,7 @@ def faculty_filter_events(request):
         'events': events,
         'page_title': page_title,
         'selected_status': selected_status,
+        'today': timezone.now().date(),
         'active_nav': 'faculty-filter',
     }
 
@@ -890,6 +891,26 @@ def cancel_event(request, event_id):
     messages.success(request, "Event cancelled successfully.")
 
     return redirect('faculty_dashboard')
+
+@login_required(login_url='/login/')
+def faculty_post_due_events(request):
+    """Events that are approved and past their end date — due for post-event upload."""
+    if request.user.role != 'faculty':
+        return redirect('login')
+
+    today = timezone.now().date()
+    events = Event.objects.filter(
+        created_by=request.user,
+        status='approved',
+        end_date__lt=today
+    ).order_by('end_date')
+
+    return render(request, 'events/faculty_post_due_events.html', {
+        'events': events,
+        'today': today,
+        'active_nav': 'faculty-post-due',
+    })
+
 
 @login_required(login_url='/login/')
 def edit_event(request, event_id):

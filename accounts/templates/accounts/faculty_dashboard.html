@@ -44,8 +44,8 @@
                         View Details
                     </a>
 
-                    <!-- Upload (only if approved) -->
-                    {% if e.status == 'approved' %}
+                    <!-- Upload (only after event end date) -->
+                    {% if e.status == 'approved' and e.end_date <= today %}
                         <a class="btn" href="{% url 'post_event_upload' e.id %}">
                             Upload Post-Event
                         </a>

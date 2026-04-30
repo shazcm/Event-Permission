@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load event_extras %}
+
+{% block title %}Submit Event Report{% endblock %}
+{% block page_title %}Submit Event Report{% endblock %}
+{% block page_subtitle %}Events that have concluded and are awaiting your post-event report and attendance upload.{% endblock %}
+
+{% block content %}
+
+{% if events %}
+<div class="message" style="background:#fff8ec; border-color:#f5d98a; color:#7a5500; margin-bottom:16px;">
+    <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>
+    You have <strong>{{ events|length }}</strong> event{{ events|pluralize }} pending post-event submission.
+</div>
+{% endif %}
+
+<section class="event-grid">
+    {% for e in events %}
+        <article class="event-card">
+            {% include "events/partials/event_detail_card_body.html" with event=e %}
+
+            <div class="action-row">
+                <a class="btn secondary" href="{% url 'event_detail' e.id %}">View Details</a>
+                <a class="btn" href="{% url 'post_event_upload' e.id %}">
+                    <i class="fa-solid fa-file-arrow-up" style="margin-right:5px;"></i>Upload Report
+                </a>
+            </div>
+        </article>
+    {% empty %}
+        <article class="event-card" style="grid-column: 1 / -1;">
+            <p class="muted" style="margin:0;">
+                <i class="fa-solid fa-circle-check" style="color: var(--success); margin-right:6px;"></i>
+                All caught up! No events are pending a post-event report.
+            </p>
+        </article>
+    {% endfor %}
+</section>
+{% endblock %}
