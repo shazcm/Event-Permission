@@ -47,12 +47,22 @@ class EventForm(forms.ModelForm):
         if start and end:
             if start >= end:
                 self.add_error('end_time', "End time must be after start time.")
+
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
 
         if start_date and end_date:
             if start_date > end_date:
                 self.add_error('end_date', "End date must be after start date.")
+
+        # ✅ Prevent creating events with a past start date
+        from django.utils import timezone
+        today = timezone.now().date()
+        if start_date and start_date < today:
+            # Allow editing of existing (rejected) events that already have a past date
+            # only block on brand-new events (no instance pk)
+            if not self.instance or not self.instance.pk:
+                self.add_error('start_date', "Start date cannot be in the past.")
 
         return cleaned_data
 

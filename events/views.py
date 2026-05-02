@@ -117,6 +117,7 @@ def create_event(request):
             'active_nav': 'faculty-create',
         }
     )
+@login_required(login_url='/login/')
 def tag_autocomplete(request):
 
     query = request.GET.get("q")
@@ -215,7 +216,6 @@ def principal_event_action(request, event_id, action):
 
     return redirect(request.META.get('HTTP_REFERER', 'principal_pending_events'))
 
-  # adjust import if needed
 
 
 def generate_auto_report(event):
@@ -295,6 +295,7 @@ def post_event_upload(request, event_id):
         # ---- Handle Attendance Upload ----
         if request.FILES.get('attendance_file'):
             event.attendance_file = request.FILES.get('attendance_file')
+            event.save()  # Save attendance immediately so it's not lost
 
         # ---- Handle Image Upload (Max 5) ----
         images = request.FILES.getlist('images')
@@ -427,8 +428,7 @@ def view_all_events(request):
     if request.user.role != 'principal':
         return redirect('login')
 
-    events = Event.objects.filter(
-        status__in=['completed', 'verified']
+    events = Event.objects.all(
     ).select_related('created_by', 'department', 'venue').order_by('-start_date')
 
     # 🔎 Search
@@ -570,8 +570,9 @@ def principal_approved_events(request):
     today = timezone.now().date()
 
     approved_events = Event.objects.filter(
-        status='approved'
-    ).order_by('-start_date')
+        status='approved',
+        end_date__gte=today  # only events that haven't ended yet
+    ).order_by('start_date')  # nearest first
 
     context = {
         'approved_events': approved_events,
@@ -833,6 +834,8 @@ def search_events(request):
         Q(category__icontains=query) |
         Q(department__name__icontains=query) |
         Q(venue__name__icontains=query)
+    ).filter(
+        status__in=['approved', 'completed', 'verified']
     ).select_related('department').order_by('-start_date')
 
     data = []

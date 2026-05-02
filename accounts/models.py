@@ -1,7 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
-from events.models import Event
 
 class User(AbstractUser):
 
@@ -64,7 +63,7 @@ class Notification(models.Model):
     )
 
     event = models.ForeignKey(
-        Event,
+        'events.Event',
         on_delete=models.CASCADE,
         null=True,
         blank=True
