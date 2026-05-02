@@ -5,11 +5,10 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Count, Q
 from django.utils import timezone
-from django import forms
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
 import os
 
-from .forms import EventForm, PostEventForm, EventPhotoForm
+from .forms import EventForm, PostEventForm, EventPhotoForm, VenueUpdateForm
 from .models import Event, Department, Tag, Venue, EventPhoto
 
 from reportlab.lib.pagesizes import A4
@@ -192,7 +191,10 @@ def principal_event_action(request, event_id, action):
 
         event.status = 'rejected'
         event.principal_remark = remark.strip()
-        
+
+    else:
+        messages.error(request, "Invalid action.")
+        return redirect('principal_pending_events')
     event.save()
     
 
@@ -319,7 +321,16 @@ def post_event_upload(request, event_id):
 
         # ---- Submit Final Report Button ----
         if "submit_report" in request.POST:
-            event.report_text = request.POST.get("report_text")
+            report_text = request.POST.get("report_text", "").strip()
+
+            if not report_text:
+                messages.error(request, "Report text cannot be empty before submitting.")
+                return render(request, 'events/post_upload.html', {
+                    'event': event,
+                    'active_nav': 'faculty-dashboard',
+                })
+
+            event.report_text = report_text
             event.status = "completed"
 
             # Handle tags submitted with the report
@@ -571,8 +582,8 @@ def principal_approved_events(request):
 
     approved_events = Event.objects.filter(
         status='approved',
-        end_date__gte=today  # only events that haven't ended yet
-    ).order_by('start_date')  # nearest first
+        end_date__gte=today  # only upcoming/ongoing events
+    ).order_by('start_date')
 
     context = {
         'approved_events': approved_events,
@@ -607,11 +618,6 @@ def change_event_venue(request, event_id):
     if event.end_date < today:
         messages.error(request, "Cannot change venue. Event has already ended.")
         return redirect('principal_approved_events')
-
-    class VenueUpdateForm(forms.ModelForm):
-        class Meta:
-            model = Event
-            fields = ['venue']
 
     if request.method == 'POST':
         form = VenueUpdateForm(request.POST, instance=event)
@@ -814,7 +820,7 @@ def download_detailed_report(request, event_id):
     elements.append(Spacer(1, 30))
     elements.append(
         Paragraph(
-            f"Generated on {datetime.now().strftime('%d %B %Y, %I:%M %p')}",
+            f"Generated on {timezone.now().strftime('%d %B %Y, %I:%M %p')}",
             styles["Normal"]
         )
     )
@@ -830,13 +836,10 @@ def search_events(request):
     query = request.GET.get('q', '')
 
     events = Event.objects.filter(
-        Q(title__icontains=query) |
-        Q(category__icontains=query) |
-        Q(department__name__icontains=query) |
-        Q(venue__name__icontains=query)
-    ).filter(
         status__in=['approved', 'completed', 'verified']
     ).select_related('department').order_by('-start_date')
+
+    events = _apply_event_search(events, query)
 
     data = []
     for event in events:

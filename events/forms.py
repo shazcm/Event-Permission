@@ -86,3 +86,9 @@ class EventPhotoForm(forms.ModelForm):
     class Meta:
         model = EventPhoto
         fields = ['image']
+
+
+class VenueUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Event
+        fields = ['venue']
