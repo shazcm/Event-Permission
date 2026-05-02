@@ -5,10 +5,11 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Count, Q
 from django.utils import timezone
-from datetime import datetime, timezone as dt_timezone
+from django import forms
+from datetime import datetime
 import os
 
-from .forms import EventForm, PostEventForm, EventPhotoForm, VenueUpdateForm
+from .forms import EventForm, PostEventForm, EventPhotoForm
 from .models import Event, Department, Tag, Venue, EventPhoto
 
 from reportlab.lib.pagesizes import A4
@@ -191,10 +192,7 @@ def principal_event_action(request, event_id, action):
 
         event.status = 'rejected'
         event.principal_remark = remark.strip()
-
-    else:
-        messages.error(request, "Invalid action.")
-        return redirect('principal_pending_events')
+        
     event.save()
     
 
@@ -321,16 +319,7 @@ def post_event_upload(request, event_id):
 
         # ---- Submit Final Report Button ----
         if "submit_report" in request.POST:
-            report_text = request.POST.get("report_text", "").strip()
-
-            if not report_text:
-                messages.error(request, "Report text cannot be empty before submitting.")
-                return render(request, 'events/post_upload.html', {
-                    'event': event,
-                    'active_nav': 'faculty-dashboard',
-                })
-
-            event.report_text = report_text
+            event.report_text = request.POST.get("report_text")
             event.status = "completed"
 
             # Handle tags submitted with the report
@@ -399,22 +388,97 @@ def analytics_dashboard(request):
     if request.user.role != 'principal':
         return redirect('login')
 
-    total_events = Event.objects.count()
-    pending = Event.objects.filter(status='pending').count()
-    approved = Event.objects.filter(status='approved').count()
-    completed = Event.objects.filter(status='completed').count()
-    verified = Event.objects.filter(status='verified').count()
-    rejected = Event.objects.filter(status='rejected').count()
+    from datetime import date, timedelta
+    from dateutil.relativedelta import relativedelta
 
-    status_labels = ['Pending', 'Approved', 'Completed', 'Verified', 'Rejected']
-    status_counts = [pending, approved, completed, verified, rejected]
+    all_events = Event.objects.select_related('department', 'venue', 'created_by')
+    today = date.today()
 
-    category_labels = ['Department', 'NSS', 'NCC', 'Union', 'Other']
-    category_keys = ['department', 'nss', 'ncc', 'union', 'other']
-    category_counts = [
-        Event.objects.filter(category=category_key).count()
-        for category_key in category_keys
-    ]
+    # ── Status counts ──────────────────────────────────────────────
+    total_events = all_events.count()
+    pending   = all_events.filter(status='pending').count()
+    approved  = all_events.filter(status='approved').count()
+    completed = all_events.filter(status='completed').count()
+    verified  = all_events.filter(status='verified').count()
+    rejected  = all_events.filter(status='rejected').count()
+    cancelled = all_events.filter(status='cancelled').count()
+
+    decided = approved + completed + verified + rejected + cancelled
+    approval_rate = round((approved + completed + verified) / decided * 100) if decided else 0
+
+    # ── Monthly submission activity (last 12 months) ───────────────
+    month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    monthly_labels, monthly_counts = [], []
+    peak_month_label, peak_month_count = '', 0
+    total_last_12 = 0
+    for i in range(11, -1, -1):
+        d = today - relativedelta(months=i)
+        label = month_names[d.month - 1]
+        cnt = all_events.filter(start_date__year=d.year, start_date__month=d.month).count()
+        monthly_labels.append(label)
+        monthly_counts.append(cnt)
+        total_last_12 += cnt
+        if cnt > peak_month_count:
+            peak_month_count = cnt
+            peak_month_label = month_names[d.month - 1]
+
+    avg_per_month = round(total_last_12 / 12, 1)
+
+    # Avg turnaround: days between created_at and completed_at for completed/verified events
+    from django.db.models import Avg, F, ExpressionWrapper, DurationField
+    turnaround_qs = all_events.filter(
+        status__in=['completed', 'verified'],
+        completed_at__isnull=False
+    ).annotate(
+        duration=ExpressionWrapper(F('completed_at') - F('created_at'), output_field=DurationField())
+    ).aggregate(avg_dur=Avg('duration'))
+    avg_turnaround_days = '-'
+    if turnaround_qs['avg_dur']:
+        avg_turnaround_days = str(turnaround_qs['avg_dur'].days) + ' days'
+
+    # ── Department activity ────────────────────────────────────────
+    dept_data = list(
+        all_events.values('department__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:6]
+    )
+    max_dept = max((d['count'] for d in dept_data), default=1)
+    dept_rows = [{
+        'name': d['department__name'] or 'General',
+        'count': d['count'],
+        'pct': round(d['count'] / max_dept * 100),
+    } for d in dept_data]
+
+    # ── Venue utilisation ──────────────────────────────────────────
+    venue_data = list(
+        all_events.values('venue__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:6]
+    )
+    top_venue = venue_data[0]['venue__name'] if venue_data else '-'
+    venue_rows = [{'name': v['venue__name'] or 'Unknown', 'count': v['count']} for v in venue_data]
+
+    # ── Participation type ─────────────────────────────────────────
+    boys  = all_events.filter(participation_type='boys').count()
+    girls = all_events.filter(participation_type='girls').count()
+    mixed = all_events.filter(participation_type='mixed').count()
+
+    # ── Faculty leaderboard ────────────────────────────────────────
+    faculty_data = list(
+        all_events
+        .values('created_by__first_name', 'created_by__last_name', 'created_by__username')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:5]
+    )
+    max_faculty = max((f['count'] for f in faculty_data), default=1)
+    faculty_rows = []
+    for f in faculty_data:
+        full = (f['created_by__first_name'] + ' ' + f['created_by__last_name']).strip()
+        faculty_rows.append({
+            'name': full or f['created_by__username'],
+            'count': f['count'],
+            'pct': round(f['count'] / max_faculty * 100),
+        })
 
     context = {
         'total': total_events,
@@ -423,10 +487,38 @@ def analytics_dashboard(request):
         'completed': completed,
         'verified': verified,
         'rejected': rejected,
-        'status_labels': status_labels,
-        'status_counts': status_counts,
-        'category_labels': category_labels,
-        'category_counts': category_counts,
+        'cancelled': cancelled,
+        'approval_rate': approval_rate,
+
+        # submission activity chart
+        'monthly_labels': monthly_labels,
+        'monthly_counts': monthly_counts,
+        'peak_month_label': peak_month_label,
+        'peak_month_count': peak_month_count,
+        'avg_per_month': avg_per_month,
+        'avg_turnaround_days': avg_turnaround_days,
+
+        # status donut
+        'status_labels': ['Approved', 'Pending', 'Verified', 'Completed', 'Rejected', 'Cancelled'],
+        'status_counts': [approved, pending, verified, completed, rejected, cancelled],
+
+        # dept
+        'dept_rows': dept_rows,
+
+        # venue
+        'venue_rows': venue_rows,
+        'top_venue': top_venue,
+
+        # participation
+        'boys': boys,
+        'girls': girls,
+        'mixed': mixed,
+        'participation_labels': ['Boys', 'Girls', 'Mixed'],
+        'participation_counts': [boys, girls, mixed],
+
+        # faculty
+        'faculty_rows': faculty_rows,
+
         'active_nav': 'principal-analytics',
     }
 
@@ -446,6 +538,7 @@ def view_all_events(request):
     search = request.GET.get('search', '').strip()
     events = _apply_event_search(events, search)
 
+
     # 🏢 Department filter
     department = request.GET.get('department')
     if department:
@@ -461,7 +554,7 @@ def view_all_events(request):
     if participation:
         events = events.filter(participation_type=participation)
 
-    # 📅 Date range filter
+    # 📅 Date range filter (UPDATED)
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
@@ -475,19 +568,20 @@ def view_all_events(request):
     elif end_date:
         events = events.filter(start_date__lte=end_date)
 
-    # 📌 Status filter
-    status = request.GET.get('status', '').strip()
-    if status:
-        events = events.filter(status=status)
+    show_verified = request.GET.get('verified')
 
-    total_count = Event.objects.count()
+    if show_verified == "1":
+        events = events.filter(status='verified')
+        show_verified = True
+    else:
+        show_verified = False
+
     departments = Department.objects.all()
 
     context = {
         'events': events,
         'departments': departments,
-        'total_count': total_count,
-        'selected_status': status,
+        'show_verified': show_verified,
         'active_nav': 'principal-all',
     }
 
@@ -527,12 +621,6 @@ def faculty_filter_events(request):
     elif status == "conducted":
         events = events.filter(status__in=['completed', 'verified'])
         selected_status = "conducted"
-
-    elif status == "approved":
-        # Only show upcoming/ongoing approved events — past-due ones are in post-upload
-        today_date = timezone.now().date()
-        events = events.filter(status='approved', end_date__gte=today_date)
-        selected_status = "approved"
 
     else:
         events = events.filter(status=status)
@@ -586,8 +674,8 @@ def principal_approved_events(request):
 
     approved_events = Event.objects.filter(
         status='approved',
-        end_date__gte=today  # only upcoming/ongoing events
-    ).order_by('start_date')
+        end_date__gte=today  # only events that haven't ended yet
+    ).order_by('start_date')  # nearest first
 
     context = {
         'approved_events': approved_events,
@@ -622,6 +710,11 @@ def change_event_venue(request, event_id):
     if event.end_date < today:
         messages.error(request, "Cannot change venue. Event has already ended.")
         return redirect('principal_approved_events')
+
+    class VenueUpdateForm(forms.ModelForm):
+        class Meta:
+            model = Event
+            fields = ['venue']
 
     if request.method == 'POST':
         form = VenueUpdateForm(request.POST, instance=event)
@@ -824,7 +917,7 @@ def download_detailed_report(request, event_id):
     elements.append(Spacer(1, 30))
     elements.append(
         Paragraph(
-            f"Generated on {timezone.now().strftime('%d %B %Y, %I:%M %p')}",
+            f"Generated on {datetime.now().strftime('%d %B %Y, %I:%M %p')}",
             styles["Normal"]
         )
     )
@@ -840,10 +933,13 @@ def search_events(request):
     query = request.GET.get('q', '')
 
     events = Event.objects.filter(
+        Q(title__icontains=query) |
+        Q(category__icontains=query) |
+        Q(department__name__icontains=query) |
+        Q(venue__name__icontains=query)
+    ).filter(
         status__in=['approved', 'completed', 'verified']
     ).select_related('department').order_by('-start_date')
-
-    events = _apply_event_search(events, query)
 
     data = []
     for event in events:
