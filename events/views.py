@@ -530,6 +530,12 @@ def faculty_filter_events(request):
         events = events.filter(status__in=['completed', 'verified'])
         selected_status = "conducted"
 
+    elif status == "approved":
+        # Only show upcoming/ongoing approved events — past-due ones are in post-upload
+        today_date = timezone.now().date()
+        events = events.filter(status='approved', end_date__gte=today_date)
+        selected_status = "approved"
+
     else:
         events = events.filter(status=status)
         selected_status = status
