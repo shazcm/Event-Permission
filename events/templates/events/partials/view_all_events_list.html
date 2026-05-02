@@ -1,4 +1,4 @@
-<div class="muted" style="margin-bottom: 10px;">Showing {{ events|length }} event{{ events|pluralize }}</div>
+<div class="muted" style="margin-bottom: 10px;">Showing {{ events|length }} of {{ total_count }} event{{ total_count|pluralize }}</div>
 
 <section class="event-grid">
     {% for e in events %}

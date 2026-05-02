@@ -446,7 +446,6 @@ def view_all_events(request):
     search = request.GET.get('search', '').strip()
     events = _apply_event_search(events, search)
 
-
     # 🏢 Department filter
     department = request.GET.get('department')
     if department:
@@ -462,7 +461,7 @@ def view_all_events(request):
     if participation:
         events = events.filter(participation_type=participation)
 
-    # 📅 Date range filter (UPDATED)
+    # 📅 Date range filter
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
@@ -476,20 +475,19 @@ def view_all_events(request):
     elif end_date:
         events = events.filter(start_date__lte=end_date)
 
-    show_verified = request.GET.get('verified')
+    # 📌 Status filter
+    status = request.GET.get('status', '').strip()
+    if status:
+        events = events.filter(status=status)
 
-    if show_verified == "1":
-        events = events.filter(status='verified')
-        show_verified = True
-    else:
-        show_verified = False
-
+    total_count = Event.objects.count()
     departments = Department.objects.all()
 
     context = {
         'events': events,
         'departments': departments,
-        'show_verified': show_verified,
+        'total_count': total_count,
+        'selected_status': status,
         'active_nav': 'principal-all',
     }
 

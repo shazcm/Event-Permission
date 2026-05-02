@@ -1,68 +1,421 @@
 {% extends "base.html" %}
 {% load event_extras %}
 
-{% block title %}All Conducted Events{% endblock %}
+{% block title %}All Events{% endblock %}
 {% block page_title %}All Events{% endblock %}
-{% block page_subtitle %}Search and filter completed or verified events across the institution.{% endblock %}
+{% block page_subtitle %}Search and filter all events across the institution.{% endblock %}
 
 {% block content %}
-<section class="panel" style="margin-bottom:14px;">
-    <form method="get" data-ajax-list="#allEventsList" data-ajax-delay="300">
-        <div class="filters">
-            <div>
-                <label for="search">Search</label>
-                <input type="text" id="search" name="search" value="{{ request.GET.search }}" placeholder="Search by title, category, or department">
-            </div>
-            <div>
-                <label for="category">Category</label>
-                <select id="category" name="category">
-                    <option value="">All</option>
-                    <option value="department" {% if request.GET.category == 'department' %}selected{% endif %}>Department</option>
-                    <option value="nss" {% if request.GET.category == 'nss' %}selected{% endif %}>NSS</option>
-                    <option value="ncc" {% if request.GET.category == 'ncc' %}selected{% endif %}>NCC</option>
-                    <option value="union" {% if request.GET.category == 'union' %}selected{% endif %}>Union</option>
-                    <option value="other" {% if request.GET.category == 'other' %}selected{% endif %}>Other</option>
-                </select>
-            </div>
-            <div>
-                <label for="department">Department</label>
-                <select id="department" name="department">
-                    <option value="">All</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:'s' %}selected{% endif %}>{{ dept.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="participation">Participation</label>
-                <select id="participation" name="participation">
-                    <option value="">All</option>
-                    <option value="boys" {% if request.GET.participation == 'boys' %}selected{% endif %}>Boys</option>
-                    <option value="girls" {% if request.GET.participation == 'girls' %}selected{% endif %}>Girls</option>
-                    <option value="mixed" {% if request.GET.participation == 'mixed' %}selected{% endif %}>Mixed</option>
-                </select>
-            </div>
-            <div>
-                <label for="start_date">Start Date</label>
-                <input id="start_date" type="date" name="start_date" value="{{ request.GET.start_date }}">
-            </div>
-            <div>
-                <label for="end_date">End Date</label>
-                <input id="end_date" type="date" name="end_date" value="{{ request.GET.end_date }}">
-            </div>
-        </div>
 
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <button class="btn" type="submit">Search</button>
-            <label style="display:flex;align-items:center;gap:8px;margin:0;">
-                <input style="width:auto;margin:0;" type="checkbox" name="verified" value="1" {% if show_verified %}checked{% endif %}>
-                Verified Only
-            </label>
-        </div>
-    </form>
-</section>
+<style>
+    .my-events-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .event-count-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-soft);
+        font-weight: 600;
+    }
+    .event-count-badge::before {
+        content: '';
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text);
+    }
+    .search-filter-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 14px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 180px;
+    }
+    .search-box svg { color: var(--text-soft); flex-shrink: 0; }
+    .search-box input {
+        border: none;
+        background: transparent;
+        margin: 0;
+        padding: 2px 0;
+        font-size: 14px;
+        color: var(--text);
+        width: 100%;
+        outline: none;
+    }
+    .search-box input::placeholder { color: var(--text-soft); }
+    .filter-divider { width: 1px; height: 28px; background: var(--line); flex-shrink: 0; }
+    .quick-filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .filter-icon { color: var(--text-soft); display: flex; align-items: center; }
+    .quick-filter-btn {
+        border: none;
+        background: transparent;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text-soft);
+        transition: background 0.15s, color 0.15s;
+        white-space: nowrap;
+    }
+    .quick-filter-btn:hover { background: var(--surface-muted); color: var(--text); }
+    .quick-filter-btn.active { background: var(--accent); color: #fff; }
+    .more-filters-btn {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: background 0.15s, border-color 0.15s;
+        white-space: nowrap;
+    }
+    .more-filters-btn:hover { background: var(--surface-muted); border-color: #ccc; }
+    .more-filters-btn.open { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .more-filters-btn .chevron { transition: transform 0.2s; }
+    .more-filters-btn.open .chevron { transform: rotate(180deg); }
+    .expanded-filters {
+        display: none;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 20px;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        align-items: end;
+    }
+    .expanded-filters.show { display: grid; }
+    .expanded-filters label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .expanded-filters input,
+    .expanded-filters select { margin: 0; font-size: 13px; }
+    .expanded-filters .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+    .expanded-filters .apply-btn {
+        background: var(--accent); color: #fff; border: none;
+        border-radius: 9px; padding: 9px 18px; font-weight: 700;
+        cursor: pointer; font-size: 13px; white-space: nowrap;
+    }
+    .expanded-filters .clear-btn {
+        background: transparent; border: 1px solid var(--line);
+        border-radius: 9px; padding: 9px 14px; font-weight: 600;
+        cursor: pointer; font-size: 13px; color: var(--text-soft); white-space: nowrap;
+    }
+    .active-filter-tag {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: var(--accent-soft); color: var(--accent);
+        border-radius: 20px; padding: 3px 10px;
+        font-size: 12px; font-weight: 700;
+        margin-right: 6px; margin-bottom: 10px;
+    }
+    .active-filter-tag button {
+        background: none; border: none; color: var(--accent);
+        cursor: pointer; padding: 0; font-size: 14px; line-height: 1;
+        display: flex; align-items: center;
+    }
+    .active-filters-row { margin-bottom: 8px; }
+</style>
 
+<!-- Header row -->
+<div class="my-events-header">
+    <div class="event-count-badge" id="eventCountBadge">
+        {{ events|length }} of {{ total_count }} events
+    </div>
+</div>
+
+<!-- Active filter tags -->
+<div class="active-filters-row" id="activeFilterTags"></div>
+
+<!-- Search + Quick filter bar -->
+<div class="search-filter-bar">
+    <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search events..." value="{{ request.GET.search|default:'' }}">
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="quick-filter-group">
+        <div class="filter-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+        </div>
+        <button class="quick-filter-btn {% if not selected_status %}active{% endif %}"
+                data-status="" onclick="setQuickFilter(this, '')">All</button>
+        <button class="quick-filter-btn {% if selected_status == 'pending' %}active{% endif %}"
+                data-status="pending" onclick="setQuickFilter(this, 'pending')">Pending</button>
+        <button class="quick-filter-btn {% if selected_status == 'approved' %}active{% endif %}"
+                data-status="approved" onclick="setQuickFilter(this, 'approved')">Approved</button>
+        <button class="quick-filter-btn {% if selected_status == 'completed' %}active{% endif %}"
+                data-status="completed" onclick="setQuickFilter(this, 'completed')">Completed</button>
+        <button class="quick-filter-btn {% if selected_status == 'verified' %}active{% endif %}"
+                data-status="verified" onclick="setQuickFilter(this, 'verified')">Verified</button>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <button class="more-filters-btn" id="moreFiltersBtn" onclick="toggleMoreFilters()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="11" y1="18" x2="13" y2="18"/>
+        </svg>
+        More Filters
+        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+        </svg>
+    </button>
+</div>
+
+<!-- Expanded filters panel -->
+<div class="expanded-filters" id="expandedFilters">
+    <div>
+        <label>Status</label>
+        <select id="fullStatusSelect">
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="completed">Completed</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    </div>
+    <div>
+        <label>Category</label>
+        <select id="categorySelect">
+            <option value="">All</option>
+            <option value="department">Department</option>
+            <option value="nss">NSS</option>
+            <option value="ncc">NCC</option>
+            <option value="union">Union</option>
+            <option value="other">Other</option>
+        </select>
+    </div>
+    <div>
+        <label>Department</label>
+        <select id="departmentSelect">
+            <option value="">All</option>
+            {% for dept in departments %}
+                <option value="{{ dept.id }}">{{ dept.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label>Participation</label>
+        <select id="participationSelect">
+            <option value="">All</option>
+            <option value="boys">Boys</option>
+            <option value="girls">Girls</option>
+            <option value="mixed">Mixed</option>
+        </select>
+    </div>
+    <div>
+        <label>Start Date (from)</label>
+        <input type="date" id="startDateInput" value="{{ request.GET.start_date|default:'' }}">
+    </div>
+    <div>
+        <label>End Date (to)</label>
+        <input type="date" id="endDateInput" value="{{ request.GET.end_date|default:'' }}">
+    </div>
+    <div class="filter-actions">
+        <button class="apply-btn" onclick="applyAllFilters()">Apply</button>
+        <button class="clear-btn" onclick="clearAllFilters()">Clear All</button>
+    </div>
+</div>
+
+<!-- Results -->
 <div id="allEventsList">
     {% include "events/partials/view_all_events_list.html" %}
 </div>
+
+<script>
+    const state = {
+        search:        '{{ request.GET.search|default:""|escapejs }}',
+        status:        '{{ selected_status|default:""|escapejs }}',
+        category:      '{{ request.GET.category|default:""|escapejs }}',
+        department:    '{{ request.GET.department|default:""|escapejs }}',
+        participation: '{{ request.GET.participation|default:""|escapejs }}',
+        start_date:    '{{ request.GET.start_date|default:""|escapejs }}',
+        end_date:      '{{ request.GET.end_date|default:""|escapejs }}',
+    };
+
+    const totalCount = {{ total_count }};
+
+    // Restore selects on load
+    document.getElementById('fullStatusSelect').value = state.status;
+    document.getElementById('categorySelect').value = state.category;
+    document.getElementById('departmentSelect').value = state.department;
+    document.getElementById('participationSelect').value = state.participation;
+
+    let searchTimer = null;
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+        state.search = this.value;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => { fetchResults(); updateActiveTags(); }, 350);
+    });
+
+    function setQuickFilter(btn, statusVal) {
+        document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.status = statusVal;
+        document.getElementById('fullStatusSelect').value = statusVal;
+        fetchResults();
+        updateActiveTags();
+    }
+
+    function toggleMoreFilters() {
+        document.getElementById('expandedFilters').classList.toggle('show');
+        document.getElementById('moreFiltersBtn').classList.toggle('open');
+    }
+
+    function applyAllFilters() {
+        state.status        = document.getElementById('fullStatusSelect').value;
+        state.category      = document.getElementById('categorySelect').value;
+        state.department    = document.getElementById('departmentSelect').value;
+        state.participation = document.getElementById('participationSelect').value;
+        state.start_date    = document.getElementById('startDateInput').value;
+        state.end_date      = document.getElementById('endDateInput').value;
+
+        document.querySelectorAll('.quick-filter-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.status === state.status);
+        });
+
+        fetchResults();
+        updateActiveTags();
+    }
+
+    function clearAllFilters() {
+        Object.keys(state).forEach(k => state[k] = '');
+        document.getElementById('searchInput').value = '';
+        document.getElementById('fullStatusSelect').value = '';
+        document.getElementById('categorySelect').value = '';
+        document.getElementById('departmentSelect').value = '';
+        document.getElementById('participationSelect').value = '';
+        document.getElementById('startDateInput').value = '';
+        document.getElementById('endDateInput').value = '';
+        document.querySelectorAll('.quick-filter-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.status === '');
+        });
+        fetchResults();
+        updateActiveTags();
+    }
+
+    function buildURL() {
+        const params = new URLSearchParams();
+        if (state.search)        params.set('search', state.search);
+        if (state.status)        params.set('status', state.status);
+        if (state.category)      params.set('category', state.category);
+        if (state.department)    params.set('department', state.department);
+        if (state.participation) params.set('participation', state.participation);
+        if (state.start_date)    params.set('start_date', state.start_date);
+        if (state.end_date)      params.set('end_date', state.end_date);
+        return '?' + params.toString();
+    }
+
+    function fetchResults() {
+        const url = buildURL();
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('allEventsList').innerHTML = html;
+                const match = html.match(/Showing (\d+) of/);
+                if (match) {
+                    document.getElementById('eventCountBadge').textContent =
+                        match[1] + ' of ' + totalCount + ' events';
+                }
+                history.replaceState(null, '', url || window.location.pathname);
+            });
+    }
+
+    function updateActiveTags() {
+        const container = document.getElementById('activeFilterTags');
+        container.innerHTML = '';
+
+        const deptSelect = document.getElementById('departmentSelect');
+        const deptLabel = deptSelect.options[deptSelect.selectedIndex]?.text || '';
+
+        const labels = {
+            status:        { label: 'Status', map: { pending:'Pending', approved:'Approved', completed:'Completed', verified:'Verified', rejected:'Rejected', cancelled:'Cancelled' }},
+            category:      { label: 'Category', map: { department:'Department', nss:'NSS', ncc:'NCC', union:'Union', other:'Other' }},
+            department:    { label: 'Department', display: deptLabel },
+            participation: { label: 'Participation', map: { boys:'Boys', girls:'Girls', mixed:'Mixed' }},
+            start_date:    { label: 'From', map: null },
+            end_date:      { label: 'To', map: null },
+        };
+
+        for (const [key, cfg] of Object.entries(labels)) {
+            if (!state[key]) continue;
+            const val = cfg.display || (cfg.map ? (cfg.map[state[key]] || state[key]) : state[key]);
+            const tag = document.createElement('span');
+            tag.className = 'active-filter-tag';
+            tag.innerHTML = `${cfg.label}: ${val} <button onclick="removeFilter('${key}')" title="Remove">×</button>`;
+            container.appendChild(tag);
+        }
+    }
+
+    function removeFilter(key) {
+        state[key] = '';
+        if (key === 'status') {
+            document.getElementById('fullStatusSelect').value = '';
+            document.querySelectorAll('.quick-filter-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.status === '');
+            });
+        }
+        if (key === 'category')      document.getElementById('categorySelect').value = '';
+        if (key === 'department')    document.getElementById('departmentSelect').value = '';
+        if (key === 'participation') document.getElementById('participationSelect').value = '';
+        if (key === 'start_date')    document.getElementById('startDateInput').value = '';
+        if (key === 'end_date')      document.getElementById('endDateInput').value = '';
+        fetchResults();
+        updateActiveTags();
+    }
+
+    // Init
+    updateActiveTags();
+
+    // Auto-open expanded panel if any advanced filter active on load
+    if (state.category || state.department || state.participation ||
+        state.start_date || state.end_date ||
+        ['rejected', 'cancelled', 'completed'].includes(state.status)) {
+        document.getElementById('expandedFilters').classList.add('show');
+        document.getElementById('moreFiltersBtn').classList.add('open');
+    }
+</script>
+
 {% endblock %}
