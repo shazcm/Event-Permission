@@ -406,6 +406,17 @@ def analytics_dashboard(request):
     decided = approved + completed + verified + rejected + cancelled
     approval_rate = round((approved + completed + verified) / decided * 100) if decided else 0
 
+    # Percentage of each status relative to total events (for donut legend)
+    def pct(count):
+        return round(count / total_events * 100) if total_events else 0
+
+    approved_pct  = pct(approved)
+    pending_pct   = pct(pending)
+    rejected_pct  = pct(rejected)
+    verified_pct  = pct(verified)
+    completed_pct = pct(completed)
+    cancelled_pct = pct(cancelled)
+
     # ── Monthly submission activity (last 12 months) ───────────────
     month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     monthly_labels, monthly_counts = [], []
@@ -414,7 +425,7 @@ def analytics_dashboard(request):
     for i in range(11, -1, -1):
         d = today - relativedelta(months=i)
         label = month_names[d.month - 1]
-        cnt = all_events.filter(start_date__year=d.year, start_date__month=d.month).count()
+        cnt = all_events.filter(start_date__year=d.year, start_date__month=d.month, status__in=['completed', 'verified']).count()
         monthly_labels.append(label)
         monthly_counts.append(cnt)
         total_last_12 += cnt
@@ -423,6 +434,18 @@ def analytics_dashboard(request):
             peak_month_label = month_names[d.month - 1]
 
     avg_per_month = round(total_last_12 / 12, 1)
+    quiet_months = sum(1 for c in monthly_counts if c == 0)
+    above_avg_months = sum(1 for c in monthly_counts if c > avg_per_month)
+
+    # Days since last conducted event
+    last_conducted = all_events.filter(
+        status__in=['completed', 'verified'],
+        completed_at__isnull=False
+    ).order_by('-completed_at').first()
+    if last_conducted:
+        days_since_last = (today - last_conducted.completed_at.date()).days
+    else:
+        days_since_last = None
 
     # Avg turnaround: days between created_at and completed_at for completed/verified events
     from django.db.models import Avg, F, ExpressionWrapper, DurationField
@@ -489,6 +512,12 @@ def analytics_dashboard(request):
         'rejected': rejected,
         'cancelled': cancelled,
         'approval_rate': approval_rate,
+        'approved_pct': approved_pct,
+        'pending_pct': pending_pct,
+        'rejected_pct': rejected_pct,
+        'verified_pct': verified_pct,
+        'completed_pct': completed_pct,
+        'cancelled_pct': cancelled_pct,
 
         # submission activity chart
         'monthly_labels': monthly_labels,
@@ -497,6 +526,10 @@ def analytics_dashboard(request):
         'peak_month_count': peak_month_count,
         'avg_per_month': avg_per_month,
         'avg_turnaround_days': avg_turnaround_days,
+        'quiet_months': quiet_months,
+        'total_last_12': total_last_12,
+        'days_since_last': days_since_last,
+        'above_avg_months': above_avg_months,
 
         # status donut
         'status_labels': ['Approved', 'Pending', 'Verified', 'Completed', 'Rejected', 'Cancelled'],
