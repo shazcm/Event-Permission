@@ -582,6 +582,11 @@ def view_all_events(request):
     if category:
         events = events.filter(category=category)
 
+    # 📌 Status filter
+    status = request.GET.get('status', '').strip()
+    if status:
+        events = events.filter(status=status)
+
     # 👦👧 Participation filter
     participation = request.GET.get('participation')
     if participation:
@@ -601,13 +606,7 @@ def view_all_events(request):
     elif end_date:
         events = events.filter(start_date__lte=end_date)
 
-    show_verified = request.GET.get('verified')
-
-    if show_verified == "1":
-        events = events.filter(status='verified')
-        show_verified = True
-    else:
-        show_verified = False
+    show_verified = status == 'verified'
 
     departments = Department.objects.all()
 
@@ -616,6 +615,8 @@ def view_all_events(request):
         'departments': departments,
         'show_verified': show_verified,
         'active_nav': 'principal-all',
+        'total_count': Event.objects.all().count(),
+        'selected_status': request.GET.get('status', ''),
     }
 
     if _is_ajax_request(request):
